@@ -19,11 +19,13 @@
     </ProjectConfiguration>
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="..\src\sm_codec\intel\sm_intel_enc.cpp" />
     <ClCompile Include="..\src\sm_codec\sm_venc.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\include\sm_codec\sm_codec_common.h" />
     <ClInclude Include="..\include\sm_codec\sm_venc.h" />
+    <ClInclude Include="..\src\sm_codec\intel\sm_intel.h" />
   </ItemGroup>
   <PropertyGroup Label="Globals">
     <ProjectGuid>{F52DBE16-4C31-4270-BEBD-379EB31EA1B6}</ProjectGuid>
@@ -99,7 +101,7 @@
       <WarningLevel>Level3</WarningLevel>
       <Optimization>Disabled</Optimization>
       <PreprocessorDefinitions>_DEBUG;_LIB;%(PreprocessorDefinitions)</PreprocessorDefinitions>
-      <AdditionalIncludeDirectories>../include</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>../include;../3rd/mfx/windows/include</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>

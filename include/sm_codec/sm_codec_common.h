@@ -68,16 +68,17 @@ typedef enum sm_video_pix_fmt
 typedef struct sm_frame_info
 {
     uint8_t *p_plane[4];
-    uint32_t len;
+    int32_t line_size[4];
+    int32_t len;
     int64_t pts;
 }sm_frame_info_t;
 
 typedef struct sm_packet_info
 {
     uint8_t *p_frame;
-    uint32_t frame_len;
+    int32_t frame_len;
     uint8_t **pp_nalu;
-    uint32_t *nalu_len;
+    int32_t *nalu_len;
     sm_frame_type_t frame_type;
     int64_t pts;
 }sm_packet_info_t;
@@ -89,8 +90,8 @@ typedef struct sm_venc_rate_control
     sm_rate_control_mode_t mode;					///<Bitrate controlling methods
     union {
         struct {
-            uint32_t target_bitrate;					///<Target bitrate: only valid when the bitrate is variable or constant.
-            uint32_t max_bitrate;						///<The maximun bitrate: only valid when the bitrate is variable.
+            int32_t target_bitrate;					///<Target bitrate: only valid when the bitrate is variable or constant.
+            int32_t max_bitrate;						///<The maximun bitrate: only valid when the bitrate is variable.
         };
         struct {
             uint8_t qpi;								///<I-Frame QP
@@ -105,8 +106,8 @@ typedef struct sm_venc_rate_control
 
 typedef struct sm_venc_extdata {
     uint8_t *p_extdata;									///<Extended data pointer. The data includes vps(Video Parameter Set),sps(Sequence Parameter Set) and pps(Picture Parameter Set).
-    uint32_t extdata_len;								///<The total length of entended data
-    uint32_t len[4];									///<len[0] vps_len;len[1] sps_len;len[2] pps_len
+    int32_t extdata_len;								///<The total length of entended data
+    int32_t len[4];									///<len[0] vps_len;len[1] sps_len;len[2] pps_len
 }sm_venc_extdata_t;
 
 typedef enum sm_venc_color_primaries {
@@ -190,7 +191,7 @@ typedef enum sm_venc_pic_struct {
 
 typedef struct sm_venc_param {
     sm_code_type_t code_type;						///<Code type, H264 or H265 
-    sm_video_pix_fmt_t fourcc;							///<Color format of input data 
+    sm_video_pix_fmt_t pix_fmt;							///<Color format of input data 
     sm_venc_rate_control_t rate_control;				///<Frame control 
     int32_t width;										///<width of input video
     int32_t height;										///<Height of input video

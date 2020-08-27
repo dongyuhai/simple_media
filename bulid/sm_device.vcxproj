@@ -24,6 +24,7 @@
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\src\sm_device\sm_device.cpp" />
+    <ClCompile Include="..\src\sm_device\sm_gpu.cpp" />
   </ItemGroup>
   <PropertyGroup Label="Globals">
     <ProjectGuid>{B07FADB2-383E-457D-AC19-7C30CC3C56A5}</ProjectGuid>

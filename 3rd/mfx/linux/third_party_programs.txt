@@ -1,0 +1,27 @@
+The following materials are defined as "Third Party Programs" and governed by separate license agreements:
+
+Intel(R) Media Software Development Kit 2018 R1:
+Files provided under a BSD license:
+<SDKInstallDir>\opensource\mfx_dispatch\include\*
+<SDKInstallDir>\opensource\mfx_dispatch\src\*
+<SDKInstallDir>\include\*
+
+
+Intel(R) Media Software Development Kit 2018 R1 - Samples:
+Files provided under a BSD-3 Clause:
+<SamplesInstallDir>\*
+This includes includes any files under the "<SamplesInstallDir>\" folder except materials under "ocl_*\" subfolders
+
+Intel(R) Media Server Studio 2017 – Video Quality Caliper:
+
+files provided under a LGPLv2.1 license
+qwindows.dll
+qtaccessiblewidgets.dll
+Qt5*.dll
+icu*.dll
+qwt.dll
+qjpeg.dll
+
+files provided under a "MICROSOFT SOFTWARE LICENSE TERMS"
+msvcp*.dll
+msvcr*.dll

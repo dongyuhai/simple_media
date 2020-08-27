@@ -1,0 +1,37 @@
+This text file is the redist.txt file specified in Section 1.B of the "Intel (R) Media Server Studio License Agreement", and all capitalized terms used but not defined in this redist.txt file have the same meaning as specified in that license agreement.
+
+The Redistributables files are listed below, and are subject to all of the terms and conditions of the Agreement, including without limitation Section 2.A(iii).   
+
+There are two categories of Redistributables, unlimited distribution, and limited distribution.  
+
+Limited Distribution Redistributables
+The following additional terms and conditions apply only to the limited distribution Redistributables:
+
+You may distribute the Redistributables as part of Your Product, however, only under one of the following two scenarios:
+
+1.	If you distribute Your Product internally for your own use, Your Product may be installed only on computer system/s that contain no more than forty (40) processor sockets in total.
+
+2.	If you distribute Your Product externally to third parties, you may distribute no more than one hundred (100) copies of Your Product, and each of those copies must be licensed with terms and conditions that limit the installation on computer system/s that contain no more than forty (40) processor sockets in total.
+
+If you would like to purchase licenses for use with computer systems that contain additional or unlimited processor sockets, or to distribute additional or unlimited copies of Your Product, please contact your Intel sales representative or reseller, or visit https://software.intel.com/en-us/media-server-studio-pro
+_____________________________________________________________________________________
+
+List of Limited Distribution Redistributables:
+
+Intel(R) Media Software Development Kit 2018 R1 - HEVC Encoder:
+mfxplugin64_hevce_sw.dll
+mfxplugin64_hevce_gacc.dll
+
+_____________________________________________________________________________________
+
+List of Unlimited Distribution Redistributables:
+
+Intel(R) Media Software Development Kit 2018 R1:
+libmfxsw64.dll
+libmfx.lib
+mfxplugin64_h264la_hw.dll
+
+Intel(R) Media Software Development Kit 2018 R1 - HEVC Decoder:
+mfxplugin64_hevcd_sw.dll
+
+* Other names and brands may be claimed as the property of others.
