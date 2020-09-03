@@ -14,9 +14,13 @@ typedef struct sm_venc_intel {
 
     mfxBitstream *p_bitstream;
     mfxSyncPoint *p_sync_point;
-
+    int32_t surface_plane_stride[4];
+    int32_t surface_plane_offset[4];
+    int32_t surface_plane_height[4];
+    int32_t plane_num;
     int32_t surface_num;
     int32_t out_buffer_num;
+    int32_t out_buffer_index;
     mfxVideoParam mfx_params;
     sm_venc_param_t in_param;
     SM_VFRAME_CALLBACK frame_callback;
@@ -40,40 +44,76 @@ sm_status_t sm_venc_intel_process_pix_fmt(sm_venc_intel_t *p_ivenc)
     int32_t height32 = SM_ALIGN32(p_ivenc->in_param.height);
     switch (p_ivenc->in_param.pix_fmt)
     {
-    case SM_VIDEO_PIX_FMT_NV12:
-    case SM_VIDEO_PIX_FMT_NV21:
+    case SM_PIX_FMT_NV12:
+    case SM_PIX_FMT_NV21:
         p_ivenc->mfx_params.mfx.FrameInfo.FourCC = MFX_FOURCC_NV12;
         p_ivenc->mfx_params.mfx.FrameInfo.ChromaFormat = MFX_CHROMAFORMAT_YUV420;
         p_ivenc->in_data_size = SM_ALIGN32(p_ivenc->in_param.width) * height32 * 3 / 2;
+        p_ivenc->surface_plane_stride[0] = p_ivenc->mfx_params.mfx.FrameInfo.Width;
+        p_ivenc->surface_plane_offset[0] = 0;
+        p_ivenc->surface_plane_height[0] = p_ivenc->in_param.height;
+        p_ivenc->surface_plane_stride[1] = p_ivenc->mfx_params.mfx.FrameInfo.Width;
+        p_ivenc->surface_plane_offset[1] = p_ivenc->mfx_params.mfx.FrameInfo.Width*p_ivenc->in_param.height;
+        p_ivenc->surface_plane_height[1] = p_ivenc->in_param.height/2;
+        p_ivenc->plane_num = 2;
         return SM_STATUS_SUCCESS;
-    case SM_VIDEO_PIX_FMT_YV12:
-    case SM_VIDEO_PIX_FMT_I420:
+    case SM_PIX_FMT_YV12:
+    case SM_PIX_FMT_I420:
         p_ivenc->mfx_params.mfx.FrameInfo.FourCC = MFX_FOURCC_YV12;
         p_ivenc->mfx_params.mfx.FrameInfo.ChromaFormat = MFX_CHROMAFORMAT_YUV420;
         p_ivenc->in_data_size = SM_ALIGN32(p_ivenc->in_param.width) * height32 * 3 / 2;
+        p_ivenc->surface_plane_stride[0] = p_ivenc->mfx_params.mfx.FrameInfo.Width;
+        p_ivenc->surface_plane_offset[0] = 0;
+        p_ivenc->surface_plane_height[0] = p_ivenc->in_param.height;
+        p_ivenc->surface_plane_stride[1] = p_ivenc->mfx_params.mfx.FrameInfo.Width/2;
+        p_ivenc->surface_plane_offset[1] = p_ivenc->mfx_params.mfx.FrameInfo.Width*p_ivenc->in_param.height;
+        p_ivenc->surface_plane_height[1] = p_ivenc->in_param.height/2;
+        p_ivenc->surface_plane_stride[2] = p_ivenc->mfx_params.mfx.FrameInfo.Width/2;
+        p_ivenc->surface_plane_offset[2] = p_ivenc->mfx_params.mfx.FrameInfo.Width*p_ivenc->in_param.height*5/4;
+        p_ivenc->surface_plane_height[2] = p_ivenc->in_param.height/2;
+        p_ivenc->plane_num = 3;
         return SM_STATUS_SUCCESS;
-    case SM_VIDEO_PIX_FMT_YUY2:
+    case SM_PIX_FMT_YUY2:
         p_ivenc->mfx_params.mfx.FrameInfo.FourCC = MFX_FOURCC_YUY2;
         p_ivenc->mfx_params.mfx.FrameInfo.ChromaFormat = MFX_CHROMAFORMAT_YUV422;
         p_ivenc->in_data_size = SM_ALIGN32(p_ivenc->in_param.width) * height32;
+        p_ivenc->surface_plane_stride[0] = p_ivenc->mfx_params.mfx.FrameInfo.Width*2;
+        p_ivenc->surface_plane_offset[0] = 0;
+        p_ivenc->surface_plane_height[0] = p_ivenc->in_param.height;
+        p_ivenc->plane_num = 1;
         return SM_STATUS_SUCCESS;
-    case SM_VIDEO_PIX_FMT_P010:
+    case SM_PIX_FMT_P010:
         p_ivenc->mfx_params.mfx.FrameInfo.BitDepthLuma = 10;
         p_ivenc->mfx_params.mfx.FrameInfo.BitDepthChroma = 10;
         p_ivenc->mfx_params.mfx.FrameInfo.Shift = 1;
         p_ivenc->mfx_params.mfx.FrameInfo.FourCC = MFX_FOURCC_P010;
         p_ivenc->mfx_params.mfx.FrameInfo.ChromaFormat = MFX_CHROMAFORMAT_YUV420;
         p_ivenc->in_data_size = SM_ALIGN32(p_ivenc->in_param.width) * height32 * 3 / 2;
+        p_ivenc->surface_plane_stride[0] = p_ivenc->mfx_params.mfx.FrameInfo.Width*2;
+        p_ivenc->surface_plane_offset[0] = 0;
+        p_ivenc->surface_plane_height[0] = p_ivenc->in_param.height;
+        p_ivenc->surface_plane_stride[1] = p_ivenc->mfx_params.mfx.FrameInfo.Width*2;
+        p_ivenc->surface_plane_offset[1] = p_ivenc->mfx_params.mfx.FrameInfo.Width*p_ivenc->in_param.height*2;
+        p_ivenc->surface_plane_height[1] = p_ivenc->in_param.height/2;
+        p_ivenc->plane_num = 2;
         return SM_STATUS_SUCCESS;
-    case SM_VIDEO_PIX_FMT_BGRA:
+    case SM_PIX_FMT_BGRA:
         p_ivenc->mfx_params.mfx.FrameInfo.FourCC = MFX_FOURCC_RGB4;
         p_ivenc->mfx_params.mfx.FrameInfo.ChromaFormat = MFX_CHROMAFORMAT_YUV444;
         p_ivenc->in_data_size = SM_ALIGN32(p_ivenc->in_param.width) * height32;
+        p_ivenc->surface_plane_stride[0] = p_ivenc->mfx_params.mfx.FrameInfo.Width * 4;
+        p_ivenc->surface_plane_offset[0] = 0;
+        p_ivenc->surface_plane_height[0] = p_ivenc->in_param.height;
+        p_ivenc->plane_num = 1;
         return SM_STATUS_SUCCESS;
-    case SM_VIDEO_PIX_FMT_RGBA:
+    case SM_PIX_FMT_RGBA:
         p_ivenc->mfx_params.mfx.FrameInfo.FourCC = MFX_FOURCC_BGR4;
         p_ivenc->mfx_params.mfx.FrameInfo.ChromaFormat = MFX_CHROMAFORMAT_YUV444;
         p_ivenc->in_data_size = SM_ALIGN32(p_ivenc->in_param.width) * height32;
+        p_ivenc->surface_plane_stride[0] = p_ivenc->mfx_params.mfx.FrameInfo.Width * 4;
+        p_ivenc->surface_plane_offset[0] = 0;
+        p_ivenc->surface_plane_height[0] = p_ivenc->in_param.height;
+        p_ivenc->plane_num = 1;
         return SM_STATUS_SUCCESS;
     }
     SM_LOGE("unsupport pix_fmt %d\n", p_ivenc->in_param.pix_fmt);
@@ -97,7 +137,7 @@ sm_status_t sm_venc_intel_create_session(sm_venc_intel_t *p_ivenc)
     return SM_STATUS_SUCCESS;
 }
 
-int16_t sm_vnec_intel_get_h264_profile(sm_vcodec_profile_t profile)
+int16_t sm_venc_intel_get_h264_profile(sm_vcodec_profile_t profile)
 {
     switch (profile)
     {
@@ -116,19 +156,19 @@ int16_t sm_vnec_intel_get_h264_profile(sm_vcodec_profile_t profile)
 sm_status_t sm_venc_intel_set_profile_level(sm_venc_intel_t *p_ivenc)
 {
     if (SM_CODE_TYPE_H264 == p_ivenc->in_param.code_type) {
-        if (SM_VIDEO_PIX_FMT_P010 == p_ivenc->in_param.pix_fmt) {
+        if (SM_PIX_FMT_P010 == p_ivenc->in_param.pix_fmt) {
             SM_LOGE("h264 not support p010\n");
             return SM_STATUS_NOT_SUPOORT;
         }
         p_ivenc->mfx_params.mfx.CodecId = MFX_CODEC_AVC;
-        p_ivenc->mfx_params.mfx.CodecProfile = sm_vnec_intel_get_h264_profile(p_ivenc->in_param.profile);//yuy2 MFX_PROFILE_AVC_HIGH_422
+        p_ivenc->mfx_params.mfx.CodecProfile = sm_venc_intel_get_h264_profile(p_ivenc->in_param.profile);//yuy2 MFX_PROFILE_AVC_HIGH_422
         p_ivenc->mfx_params.mfx.CodecLevel = p_ivenc->in_param.level;
     }
     else if (SM_CODE_TYPE_H265 == p_ivenc->in_param.code_type) {
         p_ivenc->mfx_params.mfx.CodecId = MFX_CODEC_HEVC;
         p_ivenc->have_load_h265 = 1;
         MFXVideoUSER_Load(p_ivenc->session, &MFX_PLUGINID_HEVCE_HW, 1);
-        p_ivenc->mfx_params.mfx.CodecProfile = p_ivenc->in_param.pix_fmt == SM_VIDEO_PIX_FMT_P010 ? MFX_PROFILE_HEVC_MAIN10 : MFX_PROFILE_HEVC_MAIN;
+        p_ivenc->mfx_params.mfx.CodecProfile = p_ivenc->in_param.pix_fmt == SM_PIX_FMT_P010 ? MFX_PROFILE_HEVC_MAIN10 : MFX_PROFILE_HEVC_MAIN;
         p_ivenc->mfx_params.mfx.CodecLevel = p_ivenc->in_param.level;
     }
     else {
@@ -266,7 +306,7 @@ sm_status_t sm_venc_intel_set_priv(sm_venc_intel_t *p_ivenc)
     return SM_STATUS_SUCCESS;
 }
 #ifndef _WIN32
-void sm_vnec_intel_set_va(mw_intel_venc_t *p_ivenc)
+void sm_venc_intel_set_va(mw_intel_venc_t *p_ivenc)
 {
     mfxHDL hdl = NULL;
     p_ivenc->p_hwdev = CreateVAAPIDevice();
@@ -313,7 +353,7 @@ HANDLE sm_venc_create_intel(int32_t index, sm_venc_param_t *p_param, SM_VFRAME_C
         goto fail;
     }
 #ifndef _WIN32
-    set_va(p_ivenc);
+    sm_venc_intel_set_va(p_ivenc);
 #endif
     ret = MFXVideoENCODE_Query(p_ivenc->session, &p_ivenc->mfx_params, &p_ivenc->mfx_params);
     if (ret < MFX_ERR_NONE) {
@@ -352,251 +392,217 @@ fail:
     return NULL;
 }
 
-int sm_vnec_intel_create_surface(sm_venc_intel_t *p_ivenc)
+sm_status_t sm_venc_intel_create_io(sm_venc_intel_t *p_ivenc)
 {
-    int i;
-    p_ivenc->p_in = (mfxFrameSurface1*)malloc(p_ivenc->in_frame_num * sizeof(mfxFrameSurface1));
-    if (NULL == p_ivenc->p_in) {
-        printf("in frame malloc fail\n");
-        return -1;
+    int32_t i;
+    //p_surface
+    if (NULL == p_ivenc->p_surface) {
+        p_ivenc->p_surface = (mfxFrameSurface1*)malloc(p_ivenc->surface_num * sizeof(mfxFrameSurface1));
     }
-    memset(p_ivenc->p_in, 0, p_ivenc->in_frame_num * sizeof(mfxFrameSurface1));
-    for (i = 0; i < p_ivenc->in_frame_num; i++) {
-        memcpy(&p_ivenc->p_in[i].Info, &(p_ivenc->parms.mfx.FrameInfo), sizeof(mfxFrameInfo));
-        if (0 == p_ivenc->user_mem) {
-            p_ivenc->p_in[i].Data.Y = (mfxU8 *)malloc(p_ivenc->in_buf_size);//need fix
-            if (NULL == p_ivenc->p_in[i].Data.Y) {
-                printf("in frame malloc fail\n");
-                return -1;
-            }
+    if (NULL == p_ivenc->p_surface) {
+        SM_LOGE("suface malloc fail\n");
+        return SM_STATUS_MALLOC;
+    }
+    memset(p_ivenc->p_surface, 0, p_ivenc->surface_num * sizeof(mfxFrameSurface1));
+    //p_bitstream
+    if (NULL == p_ivenc->p_bitstream) {
+        p_ivenc->p_bitstream = (mfxBitstream*)malloc(p_ivenc->out_buffer_num * sizeof(mfxBitstream));
+    }
+    if (NULL == p_ivenc->p_bitstream) {
+        SM_LOGE("malloc p_bitstream fail\n");
+        return SM_STATUS_MALLOC;
+    }
+    memset(p_ivenc->p_bitstream, 0, p_ivenc->out_buffer_num * sizeof(mfxBitstream));
+    //p_sync_point
+    if (NULL == p_ivenc->p_sync_point) {
+        p_ivenc->p_sync_point = (mfxSyncPoint *)malloc(p_ivenc->out_buffer_num * sizeof(mfxSyncPoint));
+    }
+    if (NULL == p_ivenc->p_sync_point) {
+        SM_LOGE("malloc p_sync fail\n");
+        return SM_STATUS_MALLOC;
+    }
+    memset(p_ivenc->p_sync_point, 0, p_ivenc->out_buffer_num * sizeof(mfxSyncPoint));
+    //p_surface
+    for (i = 0; i < p_ivenc->surface_num; i++) {
+        memcpy(&p_ivenc->p_surface[i].Info, &(p_ivenc->mfx_params.mfx.FrameInfo), sizeof(mfxFrameInfo));
+        p_ivenc->p_surface[i].Data.Y = (mfxU8 *)malloc(p_ivenc->in_data_size);//need fix
+        if (NULL == p_ivenc->p_surface[i].Data.Y) {
+            SM_LOGE("in frame malloc fail\n");
+            return SM_STATUS_MALLOC;
         }
     }
-    return 0;
+    //p_bitstream
+    for (i = 0; i < p_ivenc->out_buffer_num; i++) {
+        if (NULL == p_ivenc->p_bitstream[i].Data) {
+            p_ivenc->p_bitstream[i].Data = (mfxU8*)malloc(p_ivenc->out_frame_size);
+            p_ivenc->p_bitstream[i].MaxLength = p_ivenc->out_frame_size;
+        }
+        if (NULL == p_ivenc->p_bitstream[i].Data) {
+            SM_LOGE("out frame malloc fail\n");
+            return SM_STATUS_MALLOC;
+        }
+    }
+    return SM_STATUS_SUCCESS;
 }
-int intel_malloc_out_frame(mw_intel_venc_t *p_ivenc)
+
+int sm_venc_intel_get_surface_index(sm_venc_intel_t *p_ivenc)
 {
-    int i;
-    if (NULL == p_ivenc->p_out) {
-        p_ivenc->p_out = (mfxBitstream*)malloc(p_ivenc->out_frame_num * sizeof(mfxBitstream));
-    }
-    if (NULL == p_ivenc->p_out) {
-        printf("malloc p_out fail\n");
-        return -1;
-    }
-    memset(p_ivenc->p_out, 0, p_ivenc->out_frame_num * sizeof(mfxBitstream));
-    if (NULL == p_ivenc->p_sync) {
-        p_ivenc->p_sync = (mfxSyncPoint *)malloc(p_ivenc->out_frame_num * sizeof(mfxSyncPoint));
-    }
-    if (NULL == p_ivenc->p_sync) {
-        printf("malloc p_sync fail\n");
-        return -2;
-    }
-    memset(p_ivenc->p_sync, 0, p_ivenc->out_frame_num * sizeof(mfxSyncPoint));
-    for (i = 0; i < p_ivenc->out_frame_num; i++) {
-        if (NULL == p_ivenc->p_out[i].Data) {
-            p_ivenc->p_out[i].Data = (mfxU8*)malloc(p_ivenc->out_buf_size);
-            p_ivenc->p_out[i].MaxLength = p_ivenc->out_buf_size;//p_ivenc->width*p_ivenc->height;
-        }
-        if (NULL == p_ivenc->p_out[i].Data) {
-            printf("malloc data fail\n");
-            return -3;
-        }
-    }
-    return 0;
-}
-int intel_get_inframe_index(mw_intel_venc_t *p_ivenc)
-{
-    int in_index = -1;
-    if (NULL == p_ivenc->p_in) {
-        if (intel_malloc_in_frame(p_ivenc) < 0) {
-            p_ivenc->have_get_error = 1;
-            return -1;
-        }
-    }
-    for (in_index = 0; in_index < p_ivenc->in_frame_num; in_index++) {
-        if (0 == p_ivenc->p_in[in_index].Data.Locked) {
+    int32_t index = -1;
+    for (index = 0; index < p_ivenc->surface_num; index++) {
+        if (0 == p_ivenc->p_surface[index].Data.Locked) {
             break;
         }
     }
-    if (in_index >= p_ivenc->in_frame_num) {
-        printf("have no free inbuf\n");
+    if (index >= p_ivenc->surface_num) {
+        SM_LOGE("have no free surface\n");
         return -1;
     }
-    return in_index;
+    return index;
 }
 
-mw_venc_frame_type_t intel_frametype(uint16_t frame_type)
+sm_frame_type_t sm_venc_intel_frametype(uint16_t mfx_frame_type)
 {
-    if ((MFX_FRAMETYPE_I | MFX_FRAMETYPE_IDR | MFX_FRAMETYPE_REF) == frame_type) {
-        return MW_VENC_FRAME_TYPE_IDR;
+    if ((MFX_FRAMETYPE_I | MFX_FRAMETYPE_IDR | MFX_FRAMETYPE_REF) == mfx_frame_type) {
+        return SM_FRAME_TYPE_IDR;
     }
-    else if ((MFX_FRAMETYPE_I | MFX_FRAMETYPE_REF) == frame_type) {
-        return MW_VENC_FRAME_TYPE_I;
+    else if ((MFX_FRAMETYPE_I | MFX_FRAMETYPE_REF) == mfx_frame_type) {
+        return SM_FRAME_TYPE_I;
     }
-    else if ((MFX_FRAMETYPE_P | MFX_FRAMETYPE_REF) == frame_type) {
-        return MW_VENC_FRAME_TYPE_P;
+    else if ((MFX_FRAMETYPE_P | MFX_FRAMETYPE_REF) == mfx_frame_type) {
+        return SM_FRAME_TYPE_P;
     }
-    else if (MFX_FRAMETYPE_B == (frame_type & MFX_FRAMETYPE_B)) {
-        return MW_VENC_FRAME_TYPE_B;
+    else if (MFX_FRAMETYPE_B == (mfx_frame_type & MFX_FRAMETYPE_B)) {
+        return SM_FRAME_TYPE_B;
     }
     else {
-        return MW_VENC_FRAME_TYPE_UNKNOWN;
+        return SM_FRAME_TYPE_UNKNOWN;
     }
-    return MW_VENC_FRAME_TYPE_UNKNOWN;
+    return SM_FRAME_TYPE_UNKNOWN;
 }
-int32_t intel_output_stream(mw_intel_venc_t *p_ivenc)
+int32_t sm_venc_intel_output(sm_venc_intel_t *p_ivenc)
 {
     mfxStatus ret;
-    int out_index = -1;
-    ret = MFXVideoCORE_SyncOperation(p_ivenc->session, p_ivenc->p_sync[p_ivenc->out_frame_index], 300000);
+    int32_t index = -1;
+    ret = MFXVideoCORE_SyncOperation(p_ivenc->session, p_ivenc->p_sync_point[p_ivenc->out_buffer_index], 300000);
     if (MFX_ERR_NONE == ret) {
-
-        if (p_ivenc->callback_func) {
-            mw_venc_frame_info_t frame_info;
-            frame_info.frame_type = intel_frametype(p_ivenc->p_out[p_ivenc->out_frame_index].FrameType);
-            frame_info.pts = p_ivenc->p_out[p_ivenc->out_frame_index].TimeStamp;
-            frame_info.delay = p_ivenc->last_in_pts - frame_info.pts;
-            p_ivenc->callback_func(p_ivenc->callback_parm, (const uint8_t*)p_ivenc->p_out[p_ivenc->out_frame_index].Data, p_ivenc->p_out[p_ivenc->out_frame_index].DataLength, &frame_info);
+        if (p_ivenc->frame_callback) {
+            sm_frame_info_t frame_info;
+            frame_info.frame_type = sm_venc_intel_frametype(p_ivenc->p_bitstream[p_ivenc->out_buffer_index].FrameType);
+            frame_info.pts = p_ivenc->p_bitstream[p_ivenc->out_buffer_index].TimeStamp;
+            frame_info.frame_len = p_ivenc->p_bitstream[p_ivenc->out_buffer_index].DataLength;
+            frame_info.p_frame = (uint8_t*)p_ivenc->p_bitstream[p_ivenc->out_buffer_index].Data;
+            p_ivenc->frame_callback(p_ivenc->user_point, &frame_info);
         }
-        out_index = p_ivenc->out_frame_index;
-        p_ivenc->out_frame_index = (p_ivenc->out_frame_index + 1) % p_ivenc->out_frame_num;
+        index = p_ivenc->out_buffer_index;
+        p_ivenc->out_buffer_index = (p_ivenc->out_buffer_index + 1) % p_ivenc->out_buffer_num;
     }
     else {
-        printf("MFXVideoCORE_SyncOperation fail %d\n", ret);
+        SM_LOGE("MFXVideoCORE_SyncOperation fail %d\n", ret);
     }
-    return out_index;
+    return index;
 }
-int32_t intel_get_outframe_index(mw_intel_venc_t *p_ivenc)
+int32_t sm_venc_intel_get_out_buffer_index(sm_venc_intel_t *p_ivenc)
 {
-    int out_index = -1;
-    int i = p_ivenc->out_frame_index;
-    if ((NULL == p_ivenc->p_out) || (NULL == p_ivenc->p_sync)) {
-        if (intel_malloc_out_frame(p_ivenc) < 0) {
-            p_ivenc->have_get_error = 1;
-            return -1;
-        }
-    }
+    int index = -1;
+    int i = p_ivenc->out_buffer_index;
     do {
-        if (NULL == p_ivenc->p_sync[i]) {
-            out_index = i;
+        if (NULL == p_ivenc->p_sync_point[i]) {
+            index = i;
             break;
         }
         i++;
-        if (i >= p_ivenc->out_frame_num) {
+        if (i >= p_ivenc->out_buffer_num) {
             i = 0;
         }
-    } while (i != p_ivenc->out_frame_index);
-    if (out_index < 0) {
-        out_index = intel_output_stream(p_ivenc);
+    } while (i != p_ivenc->out_buffer_index);
+    if (index < 0) {
+        index = sm_venc_intel_output(p_ivenc);
     }
-    if (out_index >= 0) {
-        p_ivenc->p_out[out_index].DataOffset = 0;
-        p_ivenc->p_out[out_index].DataLength = 0;
-        p_ivenc->p_sync[out_index] = NULL;
+    if (index >= 0) {
+        p_ivenc->p_bitstream[index].DataOffset = 0;
+        p_ivenc->p_bitstream[index].DataLength = 0;
+        p_ivenc->p_sync_point[index] = NULL;
     }
-    return out_index;
+    return index;
 }
-void intel_fill_frame(mw_intel_venc_t *p_ivenc, unsigned char *p_frame, int in_index)
-{
-    int stride16 = IENC_ALIGN16(p_ivenc->stride);
-    switch (p_ivenc->in_parm.fourcc)
+void sm_venc_intel_fill_surface(sm_venc_intel_t *p_ivenc, sm_picture_info_t *p_picture, int32_t index)
+{    
+    for (int32_t i = 0; i < p_ivenc->plane_num; i++) {
+        uint8_t *p_src = p_picture->p_plane[i];
+        uint8_t *p_dst = p_ivenc->p_surface[index].Data.Y + p_ivenc->surface_plane_offset[i];
+        int32_t copy_stride = 0;
+        if (p_ivenc->surface_plane_stride[i] == p_picture->plane_stride[i]) {
+            memcpy(p_dst, p_src, p_picture->plane_stride[i] * p_ivenc->surface_plane_height[i]);
+            continue;
+        }
+        else if(p_ivenc->surface_plane_stride[i] > p_picture->plane_stride[i]){
+            copy_stride = p_picture->plane_stride[i];
+        }
+        else {
+            copy_stride = p_ivenc->surface_plane_stride[i];
+        }
+        for (int32_t j = 0; i < p_ivenc->surface_plane_height[i]; j++) {
+            memcpy(p_dst, p_src, copy_stride);
+            p_dst += p_ivenc->surface_plane_stride[i];
+            p_src += p_picture->plane_stride[i];
+        }
+    }
+    p_ivenc->p_surface[index].Data.Pitch = p_ivenc->surface_plane_stride[0];
+
+    switch (p_ivenc->in_param.pix_fmt)
     {
-    case MW_VENC_FOURCC_NV12:
-    case MW_VENC_FOURCC_NV21:
-        if (p_ivenc->user_mem) {
-            p_ivenc->p_in[in_index].Data.Y = p_frame;
+    case SM_PIX_FMT_NV12:
+    case SM_PIX_FMT_NV21:
+        p_ivenc->p_surface[index].Data.B = p_ivenc->p_surface[index].Data.Y;
+        if (SM_PIX_FMT_NV12 == p_ivenc->in_param.pix_fmt) {
+            p_ivenc->p_surface[index].Data.U = p_ivenc->p_surface[index].Data.Y + p_ivenc->surface_plane_offset[1];
+            p_ivenc->p_surface[index].Data.V = p_ivenc->p_surface[index].Data.U + 1;
         }
         else {
-            if (stride16 == p_ivenc->stride) {
-                memcpy(p_ivenc->p_in[in_index].Data.Y, p_frame, stride16 * p_ivenc->in_parm.height * 3 / 2);
-            }
-            else {
-                int i;
-                int lines = p_ivenc->in_parm.height * 3 / 2;
-                unsigned char *p_dst = p_ivenc->p_in[in_index].Data.Y;
-                for (i = 0; i < lines; i++) {
-                    memcpy(p_dst, p_frame, p_ivenc->in_parm.width);
-                    p_dst += stride16;
-                    p_frame += p_ivenc->stride;
-                }
-            }
-        }
-        p_ivenc->p_in[in_index].Data.B = p_ivenc->p_in[in_index].Data.Y;
-        if (MW_VENC_FOURCC_NV12 == p_ivenc->in_parm.fourcc) {
-            p_ivenc->p_in[in_index].Data.U = p_ivenc->p_in[in_index].Data.Y + stride16 * p_ivenc->in_parm.height;
-            p_ivenc->p_in[in_index].Data.V = p_ivenc->p_in[in_index].Data.U + 1;
-        }
-        else {
-            p_ivenc->p_in[in_index].Data.V = p_ivenc->p_in[in_index].Data.Y + stride16 * p_ivenc->in_parm.height;
-            p_ivenc->p_in[in_index].Data.U = p_ivenc->p_in[in_index].Data.V + 1;
+            p_ivenc->p_surface[index].Data.V = p_ivenc->p_surface[index].Data.Y + p_ivenc->surface_plane_offset[1];
+            p_ivenc->p_surface[index].Data.U = p_ivenc->p_surface[index].Data.V + 1;
         }
         break;
-    case MW_VENC_FOURCC_YV12:
-    case MW_VENC_FOURCC_I420:
-        if (p_ivenc->user_mem) {
-            p_ivenc->p_in[in_index].Data.Y = p_frame;
+    case SM_PIX_FMT_YV12:
+    case SM_PIX_FMT_I420:
+        p_ivenc->p_surface[index].Data.B = p_ivenc->p_surface[index].Data.Y;
+        if (SM_PIX_FMT_I420 == p_ivenc->in_param.pix_fmt) {
+            p_ivenc->p_surface[index].Data.U = p_ivenc->p_surface[index].Data.Y + p_ivenc->surface_plane_offset[1];
+            p_ivenc->p_surface[index].Data.V = p_ivenc->p_surface[index].Data.Y + p_ivenc->surface_plane_offset[2];
         }
         else {
-            memcpy(p_ivenc->p_in[in_index].Data.Y, p_frame, stride16 * p_ivenc->in_parm.height * 3 / 2);
-        }
-        p_ivenc->p_in[in_index].Data.B = p_ivenc->p_in[in_index].Data.Y;
-        if (MW_VENC_FOURCC_I420 == p_ivenc->in_parm.fourcc) {
-            p_ivenc->p_in[in_index].Data.U = p_ivenc->p_in[in_index].Data.Y + stride16 * p_ivenc->in_parm.height;
-            p_ivenc->p_in[in_index].Data.V = p_ivenc->p_in[in_index].Data.U + stride16 * p_ivenc->in_parm.height / 4;
-        }
-        else {
-            p_ivenc->p_in[in_index].Data.V = p_ivenc->p_in[in_index].Data.Y + stride16 * p_ivenc->in_parm.height;
-            p_ivenc->p_in[in_index].Data.U = p_ivenc->p_in[in_index].Data.V + stride16 * p_ivenc->in_parm.height / 4;
+            p_ivenc->p_surface[index].Data.V = p_ivenc->p_surface[index].Data.Y + p_ivenc->surface_plane_offset[1];
+            p_ivenc->p_surface[index].Data.U = p_ivenc->p_surface[index].Data.Y + p_ivenc->surface_plane_offset[2];
         }
         break;
-    case MW_VENC_FOURCC_YUY2:
-        if (p_ivenc->user_mem) {
-            p_ivenc->p_in[in_index].Data.Y = p_frame;
-        }
-        else {
-            if (stride16 == p_ivenc->stride) {
-                memcpy(p_ivenc->p_in[in_index].Data.Y, p_frame, stride16 * p_ivenc->in_parm.height);
-            }
-            else {
-                int i;
-                int lines = p_ivenc->in_parm.height;
-                unsigned char *p_dst = p_ivenc->p_in[in_index].Data.Y;
-                for (i = 0; i < lines; i++) {
-                    memcpy(p_dst, p_frame, p_ivenc->in_parm.width * 2);
-                    p_dst += stride16;
-                    p_frame += p_ivenc->stride;
-                }
-            }
-        }
-        p_ivenc->p_in[in_index].Data.B = p_ivenc->p_in[in_index].Data.Y;
-        p_ivenc->p_in[in_index].Data.U = p_ivenc->p_in[in_index].Data.Y + 1;
-        p_ivenc->p_in[in_index].Data.V = p_ivenc->p_in[in_index].Data.U + 3;
+    case SM_PIX_FMT_YUY2:
+        p_ivenc->p_surface[index].Data.B = p_ivenc->p_surface[index].Data.Y;
+        p_ivenc->p_surface[index].Data.U = p_ivenc->p_surface[index].Data.Y + 1;
+        p_ivenc->p_surface[index].Data.V = p_ivenc->p_surface[index].Data.U + 3;
         break;
-    case MW_VENC_FOURCC_P010:
-        if (p_ivenc->user_mem) {
-            p_ivenc->p_in[in_index].Data.Y = p_frame;
-        }
-        else {
-            memcpy(p_ivenc->p_in[in_index].Data.Y, p_frame, stride16 * p_ivenc->in_parm.height * 3 / 2);
-        }
-        p_ivenc->p_in[in_index].Data.B = p_ivenc->p_in[in_index].Data.Y;
-        p_ivenc->p_in[in_index].Data.U = p_ivenc->p_in[in_index].Data.Y + stride16 * p_ivenc->in_parm.height;
-        p_ivenc->p_in[in_index].Data.V = p_ivenc->p_in[in_index].Data.U + 2;
+    case SM_PIX_FMT_P010:
+        p_ivenc->p_surface[index].Data.B = p_ivenc->p_surface[index].Data.Y;
+        p_ivenc->p_surface[index].Data.U = p_ivenc->p_surface[index].Data.Y + p_ivenc->surface_plane_offset[1];
+        p_ivenc->p_surface[index].Data.V = p_ivenc->p_surface[index].Data.U + 2;
         break;
-    case MW_VENC_FOURCC_RGBA:
-    case MW_VENC_FOURCC_BGRA:
-    case MW_VENC_FOURCC_ARGB:
-    case MW_VENC_FOURCC_ABGR:
-        memcpy(p_ivenc->p_in[in_index].Data.R, p_frame, stride16 * p_ivenc->in_parm.height);
-
-        p_ivenc->p_in[in_index].Data.G = p_ivenc->p_in[in_index].Data.R + 1;
-        p_ivenc->p_in[in_index].Data.B = p_ivenc->p_in[in_index].Data.R + 2;
-        p_ivenc->p_in[in_index].Data.A = p_ivenc->p_in[in_index].Data.R + 3;
+    case SM_PIX_FMT_RGBA:
+    case SM_PIX_FMT_BGRA:
+    case SM_PIX_FMT_ARGB:
+    case SM_PIX_FMT_ABGR:
+        p_ivenc->p_surface[index].Data.G = p_ivenc->p_surface[index].Data.R + 1;
+        p_ivenc->p_surface[index].Data.B = p_ivenc->p_surface[index].Data.R + 2;
+        p_ivenc->p_surface[index].Data.A = p_ivenc->p_surface[index].Data.R + 3;
+        break;
+    default:
+        return;
     }
-    p_ivenc->p_in[in_index].Data.Pitch = stride16;
+    
 }
 
+sm_status_t sm_venc_encode_intel(HANDLE handle, sm_picture_info_t *p_frame, uint32_t force_idr)
+{
 
+}
 
 
 void sm_venc_intel_flush_encoder(sm_venc_intel_t *p_ivenc)
@@ -604,32 +610,26 @@ void sm_venc_intel_flush_encoder(sm_venc_intel_t *p_ivenc)
     mfxStatus ret;
     mfxEncodeCtrl enc_ctrl;
     int32_t out_index = -1;
-    if (!p_ivenc->p_sync_point){
+    if (!p_ivenc->p_sync_point) {
         return;
     }
     while (1) {
-        if (NULL == p_ivenc->p_sync_point[p_ivenc->out_frame_index]) {
+        if (NULL == p_ivenc->p_sync_point[p_ivenc->out_buffer_index]) {
             return;
         }
-        out_index = intel_output_stream(p_ivenc);
+        out_index = sm_venc_intel_output(p_ivenc);
         if (out_index < 0) {
             return;
         }
         memset(&enc_ctrl, 0, sizeof(enc_ctrl));
         enc_ctrl.FrameType = MFX_FRAMETYPE_UNKNOWN;//need idr
-        ret = MFXVideoENCODE_EncodeFrameAsync(p_ivenc->session, &enc_ctrl, NULL, &(p_ivenc->p_out[out_index]), &(p_ivenc->p_sync[out_index]));
+        ret = MFXVideoENCODE_EncodeFrameAsync(p_ivenc->session, &enc_ctrl, NULL, &(p_ivenc->p_bitstream[out_index]), &(p_ivenc->p_sync_point[out_index]));
         if ((MFX_ERR_NONE != ret) && (MFX_ERR_MORE_DATA != ret) && (MFX_ERR_NOT_ENOUGH_BUFFER != ret)) {
-            printf("enc ret %d\n", ret);
+            SM_LOGE("EncodeFrameAsync fail ret %d\n", ret);
             return;
         }
     }
-
 }
-sm_status_t sm_venc_encode_intel(HANDLE handle, sm_frame_info_t *p_frame, uint32_t force_idr, int64_t pts)
-{
-
-}
-
 sm_status_t sm_venc_destory_intel(HANDLE handle)
 {
     int i;

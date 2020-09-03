@@ -49,31 +49,31 @@ typedef enum sm_vcodec_profile
 }sm_vcodec_profile_t;
 
 
-typedef enum sm_video_pix_fmt
+typedef enum sm_pix_fmt
 {
-    SM_VIDEO_PIX_FMT_UNKNOWN,				
-    SM_VIDEO_PIX_FMT_NV12,
-    SM_VIDEO_PIX_FMT_NV21,
-    SM_VIDEO_PIX_FMT_YV12,
-    SM_VIDEO_PIX_FMT_I420,
-    SM_VIDEO_PIX_FMT_YUY2,
-    SM_VIDEO_PIX_FMT_P010,
-    SM_VIDEO_PIX_FMT_BGRA,
-    SM_VIDEO_PIX_FMT_RGBA,
-    SM_VIDEO_PIX_FMT_ARGB,
-    SM_VIDEO_PIX_FMT_ABGR,
-    SM_VIDEO_PIX_FMT_COUNT
-}sm_video_pix_fmt_t;
+    SM_PIX_FMT_UNKNOWN,				
+    SM_PIX_FMT_NV12,
+    SM_PIX_FMT_NV21,
+    SM_PIX_FMT_YV12,
+    SM_PIX_FMT_I420,
+    SM_PIX_FMT_YUY2,
+    SM_PIX_FMT_P010,
+    SM_PIX_FMT_BGRA,
+    SM_PIX_FMT_RGBA,
+    SM_PIX_FMT_ARGB,
+    SM_PIX_FMT_ABGR,
+    SM_PIX_FMT_COUNT
+}sm_pix_fmt_t;
 
-typedef struct sm_frame_info
+typedef struct sm_picture_info
 {
     uint8_t *p_plane[4];
-    int32_t line_size[4];
+    int32_t plane_stride[4];
     int32_t len;
     int64_t pts;
-}sm_frame_info_t;
+}sm_picture_info_t;
 
-typedef struct sm_packet_info
+typedef struct sm_frame_info
 {
     uint8_t *p_frame;
     int32_t frame_len;
@@ -81,9 +81,9 @@ typedef struct sm_packet_info
     int32_t *nalu_len;
     sm_frame_type_t frame_type;
     int64_t pts;
-}sm_packet_info_t;
+}sm_frame_info_t;
 
-typedef void(*SM_VFRAME_CALLBACK)(void * user_ptr, sm_packet_info_t *p_frame_info);
+typedef void(*SM_VFRAME_CALLBACK)(void * user_ptr, sm_frame_info_t *p_frame_info);
 
 typedef struct sm_vcodec_rate_control
 {
@@ -209,7 +209,7 @@ typedef struct sm_venc_param_ext {
 
 typedef struct sm_venc_param {
     sm_code_type_t code_type;						///<Code type, H264 or H265 
-    sm_video_pix_fmt_t pix_fmt;							///<Color format of input data 
+    sm_pix_fmt_t pix_fmt;							///<Color format of input data 
     sm_vcodec_rate_control_t rate_control;				///<Frame control 
     int32_t width;										///<width of input video
     int32_t height;										///<Height of input video
