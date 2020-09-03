@@ -11,6 +11,8 @@ typedef unsigned short uint16_t;
 typedef char int8_t;
 typedef unsigned char uint8_t;
 
+typedef void* HANDLE;
+
 typedef struct sm_fraction {
     int32_t num;
     int32_t den;

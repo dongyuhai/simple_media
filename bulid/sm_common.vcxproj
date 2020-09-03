@@ -20,6 +20,7 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\include\sm_common\sm_common.h" />
+    <ClInclude Include="..\include\sm_common\sm_log.h" />
     <ClInclude Include="..\include\sm_common\sm_status.h" />
     <ClInclude Include="..\include\sm_common\sm_type.h" />
   </ItemGroup>
