@@ -1,7 +1,7 @@
-#include <sm.h>
-
+#include <stdio.h>
+void test_venc();
 int main()
 {
-    sm_venc_encode();
+    test_venc();
     printf("---------\n");
 }

@@ -148,6 +148,7 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="..\example\main.cpp" />
+    <ClCompile Include="..\example\test_venc.cpp" />
   </ItemGroup>
   <ItemGroup>
     <None Include="..\example\example_config.ini" />

@@ -15,11 +15,11 @@ typedef struct sm_venc_intel {
     mfxBitstream *p_bitstream;
     mfxSyncPoint *p_sync_point;
     int32_t surface_plane_stride[4];
-    int32_t surface_plane_offset[4];
+    uint32_t surface_plane_offset[4];
     int32_t surface_plane_height[4];
-    int32_t plane_num;
-    int32_t surface_num;
-    int32_t out_buffer_num;
+    uint32_t plane_num;
+    uint32_t surface_num;
+    uint32_t out_buffer_num;
     int32_t out_buffer_index;
     mfxVideoParam mfx_params;
     sm_venc_param_t in_param;
@@ -28,10 +28,12 @@ typedef struct sm_venc_intel {
 #ifndef _WIN32
     CHWDevice *p_hwdev;
 #endif
-    int32_t out_frame_size;
-
-    int32_t in_data_size;
+    uint32_t out_frame_size;
+    int32_t have_get_error;
+    uint32_t in_data_size;
     int32_t have_load_h265;
+    uint64_t in_picture_count;
+    uint64_t out_frame_count;
     sm_vcodec_extdata_t extdata;
 
     mfxExtBuffer * ext[1];
@@ -177,7 +179,7 @@ sm_status_t sm_venc_intel_set_profile_level(sm_venc_intel_t *p_ivenc)
     }
     return SM_STATUS_SUCCESS;
 }
-mfxU16 sm_venc_intel_bitrate(int32_t in_bitrate)
+mfxU16 sm_venc_intel_bitrate(uint32_t in_bitrate)
 {
     if (in_bitrate > 65535) {
         return 65535;
@@ -445,7 +447,7 @@ sm_status_t sm_venc_intel_create_io(sm_venc_intel_t *p_ivenc)
     return SM_STATUS_SUCCESS;
 }
 
-int sm_venc_intel_get_surface_index(sm_venc_intel_t *p_ivenc)
+int32_t sm_venc_intel_get_surface_index(sm_venc_intel_t *p_ivenc)
 {
     int32_t index = -1;
     for (index = 0; index < p_ivenc->surface_num; index++) {
@@ -455,6 +457,7 @@ int sm_venc_intel_get_surface_index(sm_venc_intel_t *p_ivenc)
     }
     if (index >= p_ivenc->surface_num) {
         SM_LOGE("have no free surface\n");
+        p_ivenc->have_get_error = 1;
         return -1;
     }
     return index;
@@ -599,9 +602,55 @@ void sm_venc_intel_fill_surface(sm_venc_intel_t *p_ivenc, sm_picture_info_t *p_p
     
 }
 
-sm_status_t sm_venc_encode_intel(HANDLE handle, sm_picture_info_t *p_frame, uint32_t force_idr)
+sm_status_t sm_venc_encode_intel(HANDLE handle, sm_picture_info_t *p_picture, int32_t force_idr)
 {
-
+    mfxStatus ret;
+    int32_t surface_index = -1;
+    int32_t out_buffer_index = -1;
+    mfxEncodeCtrl enc_ctrl;
+    sm_venc_intel_t *p_ivenc = (sm_venc_intel_t *)handle;
+    if ((NULL == p_ivenc) || (NULL == p_ivenc->session)) {
+        return SM_STATUS_INVALID_PARAM;
+    }
+    if (p_ivenc->have_get_error) {
+        return SM_STATUS_FAIL;
+    }
+    if ((NULL == p_ivenc->p_surface) || (NULL == p_ivenc->p_bitstream) || (NULL == p_ivenc->p_sync_point)) {
+        sm_status_t status = sm_venc_intel_create_io(p_ivenc);
+        if (SM_STATUS_SUCCESS != status) {
+            p_ivenc->have_get_error = 1;
+            return status;
+        }
+    }
+    memset(&enc_ctrl, 0, sizeof(enc_ctrl));
+    if (force_idr) {
+        enc_ctrl.FrameType = MFX_FRAMETYPE_I | MFX_FRAMETYPE_IDR | MFX_FRAMETYPE_REF;
+    }
+    else {
+        enc_ctrl.FrameType = MFX_FRAMETYPE_UNKNOWN;
+    }
+    out_buffer_index = sm_venc_intel_get_out_buffer_index(p_ivenc);
+    if (out_buffer_index < 0) {
+        SM_LOGE("get out buffer fail\n");
+        p_ivenc->have_get_error = 1;
+        return SM_STATUS_FAIL;
+    }
+    surface_index = sm_venc_intel_get_surface_index(p_ivenc);
+    if (surface_index < 0) {
+        SM_LOGE("get surface fail\n");
+        p_ivenc->have_get_error = 1;
+        return SM_STATUS_FAIL;
+    }
+    p_ivenc->p_surface[surface_index].Data.TimeStamp = p_picture->pts;// +100000;
+    p_ivenc->p_surface[surface_index].Data.FrameOrder = (mfxU32)p_ivenc->in_picture_count++;
+    sm_venc_intel_fill_surface(p_ivenc, p_picture, surface_index);
+    ret = MFXVideoENCODE_EncodeFrameAsync(p_ivenc->session, &enc_ctrl, &(p_ivenc->p_surface[surface_index]), &(p_ivenc->p_bitstream[out_buffer_index]), &(p_ivenc->p_sync_point[out_buffer_index]));
+    if ((MFX_ERR_NONE != ret) && (MFX_ERR_MORE_DATA != ret)) {
+        SM_LOGE("EncodeFrameAsync %d\n", ret);
+        p_ivenc->have_get_error = 1;
+        return SM_STATUS_FAIL;
+    }
+    return SM_STATUS_SUCCESS;
 }
 
 
@@ -676,5 +725,5 @@ sm_status_t sm_venc_destory_intel(HANDLE handle)
 
 sm_status_t sm_venc_set_property_intel(HANDLE handle, sm_key_value_t *p_property)
 {
-
+    return SM_STATUS_SUCCESS;
 }

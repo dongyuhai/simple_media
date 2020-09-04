@@ -1,3 +1,4 @@
+#pragma once
 #include <stdio.h>
 #include "sm_common/sm_type.h"
 #include "sm_common/sm_status.h"

@@ -1,51 +1,52 @@
+#pragma once
 #include <stdio.h>
 #include "sm_common/sm_type.h"
 #include "sm_device/sm_gpu.h"
 #include "sm_common/sm_common.h"
 typedef enum sm_frame_type
 {
-    SM_FRAME_TYPE_UNKNOWN,							///<Unknown frame
-    SM_FRAME_TYPE_IDR,								///<IDR frame
-    SM_FRAME_TYPE_I,								///<I-frame
-    SM_FRAME_TYPE_P,								///<P-frame
-    SM_FRAME_TYPE_B,								///<B-frame
-    SM_FRAME_TYPE_COUNT							///<Number of frame types enumerated
+    SM_FRAME_TYPE_UNKNOWN,
+    SM_FRAME_TYPE_IDR,
+    SM_FRAME_TYPE_I,
+    SM_FRAME_TYPE_P,
+    SM_FRAME_TYPE_B,
+    SM_FRAME_TYPE_COUNT
 }sm_frame_type_t;
 
 typedef enum sm_code_type
 {
-    SM_CODE_TYPE_UNKNOWN,							///<Unknown
+    SM_CODE_TYPE_UNKNOWN,
 
-    SM_CODE_TYPE_AVC,								///<AVC/H264
-    SM_CODE_TYPE_H264 = SM_CODE_TYPE_AVC,		///<H264
-    SM_CODE_TYPE_HEVC,								///<HEVC/H265
-    SM_CODE_TYPE_H265 = SM_CODE_TYPE_HEVC,	///<H265
+    SM_CODE_TYPE_AVC,
+    SM_CODE_TYPE_H264 = SM_CODE_TYPE_AVC,
+    SM_CODE_TYPE_HEVC,
+    SM_CODE_TYPE_H265 = SM_CODE_TYPE_HEVC,
 
     SM_CODE_TYPE_AAC,
     SM_CODE_TYPE_MP3,
     SM_CODE_TYPE_G711A,
     SM_CODE_TYPE_G711U,
-    SM_CODE_TYPE_COUNT								///<The maximum input value 
+    SM_CODE_TYPE_COUNT
 }sm_code_type_t;
 
 typedef enum sm_rate_control_mode
 {
-    SM_RATECONTROL_UNKNOWN,						///<Unknown
-    SM_RATECONTROL_CBR,							///<Constant Bit Rate
-    SM_RATECONTROL_VBR,							///<Variable Bit Rate
-    SM_RATECONTROL_CQP,							///<Constant Quantization Parameter
-    SM_RATECONTROL_COUNT							///<The maximum input value 
+    SM_RATECONTROL_UNKNOWN,
+    SM_RATECONTROL_CBR,
+    SM_RATECONTROL_VBR,
+    SM_RATECONTROL_CQP,
+    SM_RATECONTROL_COUNT
 }sm_rate_control_mode_t;
 
 typedef enum sm_vcodec_profile
 {
-    SM_VCODEC_PROFILE_UNKNOWN,							///<Unknown
-    SM_VCODEC_PROFILE_H264_BASELINE,						///<H264 baseline
-    SM_VCODEC_PROFILE_H264_MAIN,							///<H264 main
-    SM_VCODEC_PROFILE_H264_HIGH,							///<H264 high
-    SM_VCODEC_PROFILE_H265_MAIN,							///<H265 main
-    SM_VCODEC_PROFILE_H265_MAIN10,							///<H265 main
-    SM_VCODEC_PROFILE_COUNT								///<The maximum input value 
+    SM_VCODEC_PROFILE_UNKNOWN,
+    SM_VCODEC_PROFILE_H264_BASELINE,
+    SM_VCODEC_PROFILE_H264_MAIN,
+    SM_VCODEC_PROFILE_H264_HIGH,
+    SM_VCODEC_PROFILE_H265_MAIN,
+    SM_VCODEC_PROFILE_H265_MAIN10,
+    SM_VCODEC_PROFILE_COUNT
 }sm_vcodec_profile_t;
 
 
@@ -69,35 +70,35 @@ typedef struct sm_picture_info
 {
     uint8_t *p_plane[4];
     int32_t plane_stride[4];
-    int32_t len;
-    int64_t pts;
+    uint32_t len;
+    uint64_t pts;
 }sm_picture_info_t;
 
 typedef struct sm_frame_info
 {
     uint8_t *p_frame;
-    int32_t frame_len;
+    uint32_t frame_len;
     uint8_t **pp_nalu;
-    int32_t *nalu_len;
+    uint32_t *nalu_len;
     sm_frame_type_t frame_type;
-    int64_t pts;
+    uint64_t pts;
 }sm_frame_info_t;
 
 typedef void(*SM_VFRAME_CALLBACK)(void * user_ptr, sm_frame_info_t *p_frame_info);
 
 typedef struct sm_vcodec_rate_control
 {
-    sm_rate_control_mode_t mode;					///<Bitrate controlling methods
+    sm_rate_control_mode_t mode;
     union {
         struct {
-            int32_t target_bitrate_kbps;					///<Target bitrate: only valid when the bitrate is variable or constant.
-            int32_t max_bitrate_kbps;						///<The maximun bitrate: only valid when the bitrate is variable.
+            uint32_t target_bitrate_kbps;
+            uint32_t max_bitrate_kbps;
         };
         struct {
-            uint8_t qpi;								///<I-Frame QP
-            uint8_t qpb;								///<B-Frame QP
-            uint8_t qpp;								///<P-Frame QP
-            uint8_t reserved;							///<Reserved      
+            uint8_t qpi;
+            uint8_t qpb;
+            uint8_t qpp;
+            uint8_t reserved;  
         };
     };
 }sm_vcodec_rate_control_t;
@@ -105,18 +106,18 @@ typedef struct sm_vcodec_rate_control
 
 
 typedef struct sm_vcodec_extdata {
-    uint8_t *p_extdata;									///<Extended data pointer. The data includes vps(Video Parameter Set),sps(Sequence Parameter Set) and pps(Picture Parameter Set).
-    int32_t extdata_len;								///<The total length of entended data
-    int32_t len[4];									///<len[0] vps_len;len[1] sps_len;len[2] pps_len
+    uint8_t *p_extdata;
+    uint32_t extdata_len;		
+    uint32_t len[4];
 }sm_vcodec_extdata_t;
 
 typedef enum sm_venc_preset
 {
-    SM_VENC_PRESET_UNKNOWN,						///<Unknown
-    SM_VENC_PRESET_BEST_QUALITY,					///<Quality first
-    SM_VENC_PRESET_BALANCED,						///<Balance the coding quality and speed
-    SM_VENC_PRESET_BEST_SPEED,						///<Speed first
-    SM_VENC_PRESET_COUNT							///<The maximum input value 
+    SM_VENC_PRESET_UNKNOWN,	
+    SM_VENC_PRESET_BEST_QUALITY,
+    SM_VENC_PRESET_BALANCED,
+    SM_VENC_PRESET_BEST_SPEED,
+    SM_VENC_PRESET_COUNT
 }sm_venc_preset_t;
 
 typedef enum sm_vcodec_color_primaries {
@@ -164,12 +165,6 @@ typedef enum sm_vcodec_color_transfer_characteristic {
     SM_VCODEC_COLOR_TRC_COUNT                 ///< Not part of ABI
 }sm_vcodec_color_transfer_characteristic_t;
 
-/**
-* @ingroup group_hwe_variables_enum
-* @brief mw_venc_color_space_t
-* YUV colorspace type.
-* These values match the ones defined by ISO/IEC 23001-8_2013 7.3.
-*/
 typedef enum sm_vcodec_color_space {
     SM_VCODEC_COLOR_SPACE_RGB = 0,  ///< order of coefficients is actually GBR, also IEC 61966-2-1 (sRGB)
     SM_VCODEC_COLOR_SPACE_BT709 = 1,  ///< also ITU-R BT1361 / IEC 61966-2-4 xvYCC709 / SMPTE RP177 Annex B
@@ -197,8 +192,8 @@ typedef enum sm_vcodec_pic_struct {
     SM_VCODEC_PICSTRUCT_COUNT
 }sm_vcodec_pic_struct_t;
 typedef struct sm_venc_param_ext {
-    int32_t slice_num;									///<Slice number 							///<Level
-    int32_t intel_async_depth;
+    uint32_t slice_num;
+    uint32_t intel_async_depth;
     int32_t yuv_is_full_range;
     sm_venc_preset_t preset;
     sm_vcodec_color_primaries_t color_primaries;
@@ -208,16 +203,16 @@ typedef struct sm_venc_param_ext {
 }sm_venc_param_ext_t;
 
 typedef struct sm_venc_param {
-    sm_code_type_t code_type;						///<Code type, H264 or H265 
-    sm_pix_fmt_t pix_fmt;							///<Color format of input data 
-    sm_vcodec_rate_control_t rate_control;				///<Frame control 
-    int32_t width;										///<width of input video
-    int32_t height;										///<Height of input video
-    sm_fraction_t fps;									///<Frame rate 
-    int32_t gop_size;								///<GOP size
-    int32_t gop_ref_size;								///<Referenced GOP size 1 ipppppp 2 ipbpbpb 3ipbbpbb
-    sm_vcodec_profile_t profile;							///<Profile
-    int32_t level;
+    sm_code_type_t code_type;
+    sm_pix_fmt_t pix_fmt;
+    sm_vcodec_rate_control_t rate_control;
+    int32_t width;
+    int32_t height;
+    sm_fraction_t fps;
+    uint32_t gop_size;
+    uint32_t gop_ref_size;
+    sm_vcodec_profile_t profile;
+    uint32_t level;
     sm_venc_param_ext_t ext;
     sm_key_value_t *p_prv_param;
 }sm_venc_param_t;

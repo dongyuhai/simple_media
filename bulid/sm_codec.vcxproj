@@ -23,6 +23,7 @@
     <ClCompile Include="..\src\sm_codec\sm_venc.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="..\include\sm_codec\sm_codec.h" />
     <ClInclude Include="..\include\sm_codec\sm_codec_common.h" />
     <ClInclude Include="..\include\sm_codec\sm_venc.h" />
     <ClInclude Include="..\src\sm_codec\intel\sm_intel.h" />
