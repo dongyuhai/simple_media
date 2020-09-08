@@ -22,6 +22,31 @@ uint32_t sm_venc_get_default_bitrate(sm_venc_param_t *p_param)
     }
     return bitrate;
 }
+
+sm_status_t sm_venc_check_ext_param(sm_venc_param_t *p_param)
+{
+    p_param->ext.slice_num = p_param->ext.slice_num ? p_param->ext.slice_num : 1;
+    if (p_param->ext.preset >= SM_VENC_PRESET_COUNT || p_param->ext.preset <= SM_VENC_PRESET_UNKNOWN) {
+        p_param->ext.preset = SM_VENC_PRESET_BALANCED;
+    }
+    if (p_param->ext.pic_struct >= SM_VCODEC_PICSTRUCT_COUNT || p_param->ext.pic_struct < SM_VCODEC_PICSTRUCT_PROGRESSIVE) {
+        p_param->ext.pic_struct = SM_VCODEC_PICSTRUCT_PROGRESSIVE;
+    }
+    if (!p_param->ext.signal.have_set_color) {
+        return SM_STATUS_SUCCESS;
+    }
+    if (p_param->ext.signal.color_primaries >= SM_VCODEC_COLOR_PRI_COUNT || p_param->ext.signal.color_primaries < SM_VCODEC_COLOR_PRI_RESERVED0) {
+        p_param->ext.signal.color_primaries = SM_VCODEC_COLOR_PRI_RESERVED0;
+    }
+    if (p_param->ext.signal.color_trc >= SM_VCODEC_COLOR_TRC_COUNT || p_param->ext.signal.color_trc < SM_VCODEC_COLOR_TRC_RESERVED0) {
+        p_param->ext.signal.color_trc = SM_VCODEC_COLOR_TRC_RESERVED0;
+    }
+    if (p_param->ext.signal.color_space >= SM_VCODEC_COLOR_SPACE_COUNT || p_param->ext.signal.color_space <=SM_VCODEC_COLOR_SPACE_RGB) {
+        p_param->ext.signal.color_space = SM_VCODEC_COLOR_SPACE_RGB;
+    }
+    return SM_STATUS_SUCCESS;
+}
+
 sm_status_t sm_venc_check_param(sm_venc_param_t *p_param)
 {
     if ((p_param->code_type != SM_CODE_TYPE_H264) && (p_param->code_type != SM_CODE_TYPE_H265)) {
@@ -85,9 +110,22 @@ sm_status_t sm_venc_check_param(sm_venc_param_t *p_param)
         p_param->rate_control.target_bitrate_kbps = sm_venc_get_default_bitrate(p_param);
         p_param->rate_control.max_bitrate_kbps = p_param->rate_control.target_bitrate_kbps * 3 / 2;
     }
-
+    if (SM_CODE_TYPE_H264 == p_param->code_type) {
+        if ((p_param->profile > SM_VCODEC_PROFILE_H264_HIGH) || (p_param->profile < SM_VCODEC_PROFILE_H264_BASELINE)) {
+            p_param->profile = SM_VCODEC_PROFILE_H264_MAIN;
+        }
+    }
+    else if (SM_CODE_TYPE_H265 == p_param->code_type){
+        p_param->profile = SM_VCODEC_PROFILE_H265_MAIN;
+        if (p_param->pix_fmt == SM_PIX_FMT_P010) {
+            p_param->profile = SM_VCODEC_PROFILE_H265_MAIN10;
+        }
+    }
+    
     p_param->gop_size = p_param->gop_size > 0 ? p_param->gop_size:60;
     p_param->gop_ref_size = p_param->gop_ref_size > 0 ? p_param->gop_ref_size:1;
+    sm_venc_check_ext_param(p_param);
+    return SM_STATUS_SUCCESS;
     //sm_venc_param_ext_t ext;
 }
 sm_venc_handle_t sm_venc_create(sm_key_value_t *p_encoder, sm_venc_param_t *p_param, SM_VFRAME_CALLBACK frame_callback, void *user_point)

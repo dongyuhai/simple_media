@@ -1,18 +1,24 @@
 #include <stdlib.h>
+#include <string.h>
 #include <sm_codec/sm_venc.h>
 void frame_callback(void * user_ptr, sm_frame_info_t *p_frame_info)
 {
     printf("%d\n",p_frame_info->frame_len);
+    if (user_ptr) {
+        fwrite(p_frame_info->p_frame, 1, p_frame_info->frame_len, (FILE*)user_ptr);
+    }
 }
 void test_venc()
 {
     uint8_t *p_picture_buf = (uint8_t*)malloc(1920 * 1080 * 2);
     sm_venc_param_t param;
+    FILE *fp = fopen("f://aa.h264","wb");
+    memset(&param, 0, sizeof(param));
     param.width = 1920;
     param.height = 1080;
     param.code_type = SM_CODE_TYPE_H264;
     param.pix_fmt = SM_PIX_FMT_NV12;
-    sm_venc_handle_t handle = sm_venc_create(NULL, &param, frame_callback, NULL);
+    sm_venc_handle_t handle = sm_venc_create(NULL, &param, frame_callback, fp);
     while (1) {
         sm_picture_info_t picture;
         picture.p_plane[0] = p_picture_buf;

@@ -191,14 +191,20 @@ typedef enum sm_vcodec_pic_struct {
     SM_VCODEC_PICSTRUCT_BFF = 0x02,
     SM_VCODEC_PICSTRUCT_COUNT
 }sm_vcodec_pic_struct_t;
-typedef struct sm_venc_param_ext {
-    uint32_t slice_num;
-    uint32_t intel_async_depth;
+
+typedef struct sm_venc_signal {
     int32_t yuv_is_full_range;
-    sm_venc_preset_t preset;
+    int32_t have_set_color;
     sm_vcodec_color_primaries_t color_primaries;
     sm_vcodec_color_transfer_characteristic_t color_trc;
     sm_vcodec_color_space_t color_space;
+}sm_venc_signal_t;
+
+typedef struct sm_venc_param_ext {
+    uint32_t slice_num;
+    //uint32_t intel_async_depth;
+    sm_venc_signal_t signal;
+    sm_venc_preset_t preset;
     sm_vcodec_pic_struct_t pic_struct;
 }sm_venc_param_ext_t;
 

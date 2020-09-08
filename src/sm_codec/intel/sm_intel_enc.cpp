@@ -187,6 +187,8 @@ mfxU16 sm_venc_intel_bitrate(uint32_t in_bitrate)
     return (mfxU16)in_bitrate;
 }
 
+
+
 sm_status_t sm_venc_intel_set_bitrate(sm_venc_intel_t *p_ivenc)
 {
 
@@ -253,23 +255,23 @@ sm_status_t sm_venc_intel_set_preset(sm_venc_intel_t *p_ivenc)
     }
     return SM_STATUS_SUCCESS;
 }
+
 sm_status_t sm_venc_intel_set_signal_info(sm_venc_intel_t *p_ivenc)
 {
     p_ivenc->signal_info.Header.BufferId = MFX_EXTBUFF_VIDEO_SIGNAL_INFO;
     p_ivenc->signal_info.Header.BufferSz = sizeof(p_ivenc->signal_info);
     p_ivenc->signal_info.VideoFormat = 0;
-    p_ivenc->signal_info.VideoFullRange = p_ivenc->in_param.ext.yuv_is_full_range;
+    p_ivenc->signal_info.VideoFullRange = p_ivenc->in_param.ext.signal.yuv_is_full_range;
 
-    if ((SM_VCODEC_COLOR_PRI_COUNT == p_ivenc->in_param.ext.color_primaries) &&
-        (SM_VCODEC_COLOR_TRC_COUNT == p_ivenc->in_param.ext.color_trc) &&
-        (SM_VCODEC_COLOR_SPACE_COUNT == p_ivenc->in_param.ext.color_space)) {
-        p_ivenc->signal_info.ColourDescriptionPresent = 0;
+    if (SM_VCODEC_COLOR_PRI_COUNT == p_ivenc->in_param.ext.signal.have_set_color) {
+        p_ivenc->signal_info.ColourDescriptionPresent = 1;
+        p_ivenc->signal_info.ColourPrimaries = p_ivenc->in_param.ext.signal.color_primaries;
+        p_ivenc->signal_info.TransferCharacteristics = p_ivenc->in_param.ext.signal.color_trc;
+        p_ivenc->signal_info.MatrixCoefficients = p_ivenc->in_param.ext.signal.color_space;
     }
     else {
-        p_ivenc->signal_info.ColourDescriptionPresent = 1;
-        p_ivenc->signal_info.ColourPrimaries = p_ivenc->in_param.ext.color_primaries;
-        p_ivenc->signal_info.TransferCharacteristics = p_ivenc->in_param.ext.color_trc;
-        p_ivenc->signal_info.MatrixCoefficients = p_ivenc->in_param.ext.color_space;
+        p_ivenc->signal_info.ColourDescriptionPresent = 0;
+
     }
     p_ivenc->ext[0] = &(p_ivenc->signal_info.Header);
     p_ivenc->mfx_params.ExtParam = p_ivenc->ext;
@@ -302,7 +304,7 @@ sm_status_t sm_venc_intel_set_frame_info(sm_venc_intel_t *p_ivenc)
 }
 sm_status_t sm_venc_intel_set_priv(sm_venc_intel_t *p_ivenc)
 {
-    //p_ivenc->mfx_params.AsyncDepth = p_param->intel_async_depth ? p_param->intel_async_depth : 1;//4
+    p_ivenc->mfx_params.AsyncDepth = 1;// p_param->intel_async_depth ? p_param->intel_async_depth : 1;//4
     p_ivenc->out_buffer_num = (p_ivenc->mfx_params.AsyncDepth == 1) ? 1 : (p_ivenc->mfx_params.AsyncDepth - 1);//p_ivenc->parms.AsyncDepth - 1;
     p_ivenc->mfx_params.IOPattern = MFX_IOPATTERN_IN_SYSTEM_MEMORY;
     return SM_STATUS_SUCCESS;
@@ -339,6 +341,15 @@ HANDLE sm_venc_create_intel(int32_t index, sm_venc_param_t *p_param, SM_VFRAME_C
     if (sm_venc_intel_create_session(p_ivenc) != SM_STATUS_SUCCESS) {
         goto fail;
     }
+    if (sm_venc_intel_set_profile_level(p_ivenc) != SM_STATUS_SUCCESS) {
+        goto fail;
+    }
+    if (sm_venc_intel_set_preset(p_ivenc) != SM_STATUS_SUCCESS) {
+        goto fail;
+    }
+    if (sm_venc_intel_set_frame_info(p_ivenc) != SM_STATUS_SUCCESS) {
+        goto fail;
+    }
     if (sm_venc_intel_process_pix_fmt(p_ivenc) != SM_STATUS_SUCCESS) {
         goto fail;
     }
@@ -351,7 +362,7 @@ HANDLE sm_venc_create_intel(int32_t index, sm_venc_param_t *p_param, SM_VFRAME_C
     if (sm_venc_intel_set_signal_info(p_ivenc) != SM_STATUS_SUCCESS) {
         goto fail;
     }
-    if (sm_venc_intel_set_frame_info(p_ivenc) != SM_STATUS_SUCCESS) {
+    if (sm_venc_intel_set_priv(p_ivenc) != SM_STATUS_SUCCESS) {
         goto fail;
     }
 #ifndef _WIN32
@@ -544,7 +555,7 @@ void sm_venc_intel_fill_surface(sm_venc_intel_t *p_ivenc, sm_picture_info_t *p_p
         else {
             copy_stride = p_ivenc->surface_plane_stride[i];
         }
-        for (int32_t j = 0; i < p_ivenc->surface_plane_height[i]; j++) {
+        for (int32_t j = 0; j < p_ivenc->surface_plane_height[i]; j++) {
             memcpy(p_dst, p_src, copy_stride);
             p_dst += p_ivenc->surface_plane_stride[i];
             p_src += p_picture->plane_stride[i];
