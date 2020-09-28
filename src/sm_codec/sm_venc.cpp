@@ -96,13 +96,13 @@ sm_status_t sm_venc_check_param(sm_venc_param_t *p_param)
             p_param->rate_control.qpi = p_param->rate_control.qpp = p_param->rate_control.qpb = 22;
         }
         else if (0 == p_param->rate_control.qpi) {
-            p_param->rate_control.qpi = p_param->rate_control.qpp ? p_param->rate_control.qpp : p_param->rate_control.qpb;
+            p_param->rate_control.qpi = p_param->rate_control.qpp <= 51 ? p_param->rate_control.qpp : p_param->rate_control.qpb;
         }
         else if (0 == p_param->rate_control.qpb) {
-            p_param->rate_control.qpi = p_param->rate_control.qpp ? p_param->rate_control.qpp : p_param->rate_control.qpb;
+            p_param->rate_control.qpi = p_param->rate_control.qpp <= 51 ? p_param->rate_control.qpp : p_param->rate_control.qpb;
         }
         else if (0 == p_param->rate_control.qpp) {
-            p_param->rate_control.qpi = p_param->rate_control.qpp ? p_param->rate_control.qpp : p_param->rate_control.qpb;
+            p_param->rate_control.qpi = p_param->rate_control.qpp <= 51 ? p_param->rate_control.qpp : p_param->rate_control.qpb;
         }
     }
     else {
@@ -122,8 +122,8 @@ sm_status_t sm_venc_check_param(sm_venc_param_t *p_param)
         }
     }
     
-    p_param->gop_size = p_param->gop_size > 0 ? p_param->gop_size:60;
-    p_param->gop_ref_size = p_param->gop_ref_size > 0 ? p_param->gop_ref_size:1;
+    p_param->gop_size = p_param->gop_size ? p_param->gop_size:60;
+    p_param->gop_ref_size = p_param->gop_ref_size ? p_param->gop_ref_size:1;
     sm_venc_check_ext_param(p_param);
     return SM_STATUS_SUCCESS;
     //sm_venc_param_ext_t ext;

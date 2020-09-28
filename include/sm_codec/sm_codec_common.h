@@ -192,6 +192,13 @@ typedef enum sm_vcodec_pic_struct {
     SM_VCODEC_PICSTRUCT_COUNT
 }sm_vcodec_pic_struct_t;
 
+typedef enum sm_vcodec_frame_field_mode {
+    SM_VCODEC_FRAME_FILED_MODE_PROGRESSIVE = 0x00,
+    SM_VCODEC_FRAME_FILED_MODE_FIELD = 0x01,
+    SM_VCODEC_FRAME_FILED_MODE_MBAFF = 0x02,
+    SM_VCODEC_FRAME_FILED_MODE_COUNT
+}sm_vcodec_frame_field_mode_t;
+
 typedef struct sm_venc_signal {
     int32_t yuv_is_full_range;
     int32_t have_set_color;
@@ -205,6 +212,7 @@ typedef struct sm_venc_param_ext {
     //uint32_t intel_async_depth;
     sm_venc_signal_t signal;
     sm_venc_preset_t preset;
+    sm_vcodec_frame_field_mode_t frame_field_mode;
     sm_vcodec_pic_struct_t pic_struct;
 }sm_venc_param_ext_t;
 

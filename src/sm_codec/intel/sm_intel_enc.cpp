@@ -9,25 +9,31 @@
 #include "mfxastructures.h"
 
 typedef struct sm_venc_intel {
-    mfxSession session;
-    mfxFrameSurface1* p_surface;
-
-    mfxBitstream *p_bitstream;
-    mfxSyncPoint *p_sync_point;
-    int32_t surface_plane_stride[4];
-    uint32_t surface_plane_offset[4];
-    int32_t surface_plane_height[4];
-    uint32_t plane_num;
-    uint32_t surface_num;
-    uint32_t out_buffer_num;
-    int32_t out_buffer_index;
-    mfxVideoParam mfx_params;
-    sm_venc_param_t in_param;
+    sm_venc_param_t in_params;
     SM_VFRAME_CALLBACK frame_callback;
     void *user_point;
 #ifndef _WIN32
     CHWDevice *p_hwdev;
 #endif
+
+    mfxSession session;
+    mfxVideoParam mfx_params;
+    mfxFrameSurface1* p_surface;
+
+    mfxBitstream *p_bitstream;
+    mfxSyncPoint *p_sync_point;
+
+    mfxExtBuffer * ext[1];
+    mfxExtVideoSignalInfo signal_info;
+
+    int32_t surface_plane_stride[4];
+    int32_t surface_plane_offset[4];
+    int32_t surface_plane_height[4];
+    uint32_t plane_num;
+    uint32_t surface_num;
+    uint32_t out_buffer_num;
+    int32_t out_buffer_index;
+
     uint32_t out_frame_size;
     int32_t have_get_error;
     uint32_t in_data_size;
@@ -35,53 +41,50 @@ typedef struct sm_venc_intel {
     uint64_t in_picture_count;
     uint64_t out_frame_count;
     sm_vcodec_extdata_t extdata;
-
-    mfxExtBuffer * ext[1];
-    mfxExtVideoSignalInfo signal_info;
 }sm_venc_intel_t;
 
 
 sm_status_t sm_venc_intel_process_pix_fmt(sm_venc_intel_t *p_ivenc)
 {
-    int32_t height32 = SM_ALIGN32(p_ivenc->in_param.height);
-    switch (p_ivenc->in_param.pix_fmt)
+    int32_t height32 = SM_ALIGN32(p_ivenc->in_params.height);
+    switch (p_ivenc->in_params.pix_fmt)
     {
     case SM_PIX_FMT_NV12:
     case SM_PIX_FMT_NV21:
         p_ivenc->mfx_params.mfx.FrameInfo.FourCC = MFX_FOURCC_NV12;
         p_ivenc->mfx_params.mfx.FrameInfo.ChromaFormat = MFX_CHROMAFORMAT_YUV420;
-        p_ivenc->in_data_size = SM_ALIGN32(p_ivenc->in_param.width) * height32 * 3 / 2;
+        p_ivenc->in_data_size = SM_ALIGN32(p_ivenc->in_params.width) * height32 * 3 / 2;
         p_ivenc->surface_plane_stride[0] = p_ivenc->mfx_params.mfx.FrameInfo.Width;
         p_ivenc->surface_plane_offset[0] = 0;
-        p_ivenc->surface_plane_height[0] = p_ivenc->in_param.height;
+        p_ivenc->surface_plane_height[0] = p_ivenc->in_params.height;
         p_ivenc->surface_plane_stride[1] = p_ivenc->mfx_params.mfx.FrameInfo.Width;
-        p_ivenc->surface_plane_offset[1] = p_ivenc->mfx_params.mfx.FrameInfo.Width*p_ivenc->in_param.height;
-        p_ivenc->surface_plane_height[1] = p_ivenc->in_param.height/2;
+        p_ivenc->surface_plane_offset[1] = p_ivenc->mfx_params.mfx.FrameInfo.Width*p_ivenc->in_params.height;
+        p_ivenc->surface_plane_height[1] = p_ivenc->in_params.height/2;
         p_ivenc->plane_num = 2;
         return SM_STATUS_SUCCESS;
     case SM_PIX_FMT_YV12:
     case SM_PIX_FMT_I420:
         p_ivenc->mfx_params.mfx.FrameInfo.FourCC = MFX_FOURCC_YV12;
         p_ivenc->mfx_params.mfx.FrameInfo.ChromaFormat = MFX_CHROMAFORMAT_YUV420;
-        p_ivenc->in_data_size = SM_ALIGN32(p_ivenc->in_param.width) * height32 * 3 / 2;
+        p_ivenc->in_data_size = SM_ALIGN32(p_ivenc->in_params.width) * height32 * 3 / 2;
         p_ivenc->surface_plane_stride[0] = p_ivenc->mfx_params.mfx.FrameInfo.Width;
         p_ivenc->surface_plane_offset[0] = 0;
-        p_ivenc->surface_plane_height[0] = p_ivenc->in_param.height;
+        p_ivenc->surface_plane_height[0] = p_ivenc->in_params.height;
         p_ivenc->surface_plane_stride[1] = p_ivenc->mfx_params.mfx.FrameInfo.Width/2;
-        p_ivenc->surface_plane_offset[1] = p_ivenc->mfx_params.mfx.FrameInfo.Width*p_ivenc->in_param.height;
-        p_ivenc->surface_plane_height[1] = p_ivenc->in_param.height/2;
+        p_ivenc->surface_plane_offset[1] = p_ivenc->mfx_params.mfx.FrameInfo.Width*p_ivenc->in_params.height;
+        p_ivenc->surface_plane_height[1] = p_ivenc->in_params.height/2;
         p_ivenc->surface_plane_stride[2] = p_ivenc->mfx_params.mfx.FrameInfo.Width/2;
-        p_ivenc->surface_plane_offset[2] = p_ivenc->mfx_params.mfx.FrameInfo.Width*p_ivenc->in_param.height*5/4;
-        p_ivenc->surface_plane_height[2] = p_ivenc->in_param.height/2;
+        p_ivenc->surface_plane_offset[2] = p_ivenc->mfx_params.mfx.FrameInfo.Width*p_ivenc->in_params.height*5/4;
+        p_ivenc->surface_plane_height[2] = p_ivenc->in_params.height/2;
         p_ivenc->plane_num = 3;
         return SM_STATUS_SUCCESS;
     case SM_PIX_FMT_YUY2:
         p_ivenc->mfx_params.mfx.FrameInfo.FourCC = MFX_FOURCC_YUY2;
         p_ivenc->mfx_params.mfx.FrameInfo.ChromaFormat = MFX_CHROMAFORMAT_YUV422;
-        p_ivenc->in_data_size = SM_ALIGN32(p_ivenc->in_param.width) * height32;
+        p_ivenc->in_data_size = SM_ALIGN32(p_ivenc->in_params.width) * height32;
         p_ivenc->surface_plane_stride[0] = p_ivenc->mfx_params.mfx.FrameInfo.Width*2;
         p_ivenc->surface_plane_offset[0] = 0;
-        p_ivenc->surface_plane_height[0] = p_ivenc->in_param.height;
+        p_ivenc->surface_plane_height[0] = p_ivenc->in_params.height;
         p_ivenc->plane_num = 1;
         return SM_STATUS_SUCCESS;
     case SM_PIX_FMT_P010:
@@ -90,35 +93,35 @@ sm_status_t sm_venc_intel_process_pix_fmt(sm_venc_intel_t *p_ivenc)
         p_ivenc->mfx_params.mfx.FrameInfo.Shift = 1;
         p_ivenc->mfx_params.mfx.FrameInfo.FourCC = MFX_FOURCC_P010;
         p_ivenc->mfx_params.mfx.FrameInfo.ChromaFormat = MFX_CHROMAFORMAT_YUV420;
-        p_ivenc->in_data_size = SM_ALIGN32(p_ivenc->in_param.width) * height32 * 3 / 2;
+        p_ivenc->in_data_size = SM_ALIGN32(p_ivenc->in_params.width) * height32 * 3 / 2;
         p_ivenc->surface_plane_stride[0] = p_ivenc->mfx_params.mfx.FrameInfo.Width*2;
         p_ivenc->surface_plane_offset[0] = 0;
-        p_ivenc->surface_plane_height[0] = p_ivenc->in_param.height;
+        p_ivenc->surface_plane_height[0] = p_ivenc->in_params.height;
         p_ivenc->surface_plane_stride[1] = p_ivenc->mfx_params.mfx.FrameInfo.Width*2;
-        p_ivenc->surface_plane_offset[1] = p_ivenc->mfx_params.mfx.FrameInfo.Width*p_ivenc->in_param.height*2;
-        p_ivenc->surface_plane_height[1] = p_ivenc->in_param.height/2;
+        p_ivenc->surface_plane_offset[1] = p_ivenc->mfx_params.mfx.FrameInfo.Width*p_ivenc->in_params.height*2;
+        p_ivenc->surface_plane_height[1] = p_ivenc->in_params.height/2;
         p_ivenc->plane_num = 2;
         return SM_STATUS_SUCCESS;
     case SM_PIX_FMT_BGRA:
         p_ivenc->mfx_params.mfx.FrameInfo.FourCC = MFX_FOURCC_RGB4;
         p_ivenc->mfx_params.mfx.FrameInfo.ChromaFormat = MFX_CHROMAFORMAT_YUV444;
-        p_ivenc->in_data_size = SM_ALIGN32(p_ivenc->in_param.width) * height32;
+        p_ivenc->in_data_size = SM_ALIGN32(p_ivenc->in_params.width) * height32;
         p_ivenc->surface_plane_stride[0] = p_ivenc->mfx_params.mfx.FrameInfo.Width * 4;
         p_ivenc->surface_plane_offset[0] = 0;
-        p_ivenc->surface_plane_height[0] = p_ivenc->in_param.height;
+        p_ivenc->surface_plane_height[0] = p_ivenc->in_params.height;
         p_ivenc->plane_num = 1;
         return SM_STATUS_SUCCESS;
     case SM_PIX_FMT_RGBA:
         p_ivenc->mfx_params.mfx.FrameInfo.FourCC = MFX_FOURCC_BGR4;
         p_ivenc->mfx_params.mfx.FrameInfo.ChromaFormat = MFX_CHROMAFORMAT_YUV444;
-        p_ivenc->in_data_size = SM_ALIGN32(p_ivenc->in_param.width) * height32;
+        p_ivenc->in_data_size = SM_ALIGN32(p_ivenc->in_params.width) * height32;
         p_ivenc->surface_plane_stride[0] = p_ivenc->mfx_params.mfx.FrameInfo.Width * 4;
         p_ivenc->surface_plane_offset[0] = 0;
-        p_ivenc->surface_plane_height[0] = p_ivenc->in_param.height;
+        p_ivenc->surface_plane_height[0] = p_ivenc->in_params.height;
         p_ivenc->plane_num = 1;
         return SM_STATUS_SUCCESS;
     }
-    SM_LOGE("unsupport pix_fmt %d\n", p_ivenc->in_param.pix_fmt);
+    SM_LOGE("unsupport pix_fmt %d\n", p_ivenc->in_params.pix_fmt);
     return SM_STATUS_NOT_SUPOORT;
 }
 
@@ -157,24 +160,24 @@ int16_t sm_venc_intel_get_h264_profile(sm_vcodec_profile_t profile)
 
 sm_status_t sm_venc_intel_set_profile_level(sm_venc_intel_t *p_ivenc)
 {
-    if (SM_CODE_TYPE_H264 == p_ivenc->in_param.code_type) {
-        if (SM_PIX_FMT_P010 == p_ivenc->in_param.pix_fmt) {
+    if (SM_CODE_TYPE_H264 == p_ivenc->in_params.code_type) {
+        if (SM_PIX_FMT_P010 == p_ivenc->in_params.pix_fmt) {
             SM_LOGE("h264 not support p010\n");
             return SM_STATUS_NOT_SUPOORT;
         }
         p_ivenc->mfx_params.mfx.CodecId = MFX_CODEC_AVC;
-        p_ivenc->mfx_params.mfx.CodecProfile = sm_venc_intel_get_h264_profile(p_ivenc->in_param.profile);//yuy2 MFX_PROFILE_AVC_HIGH_422
-        p_ivenc->mfx_params.mfx.CodecLevel = p_ivenc->in_param.level;
+        p_ivenc->mfx_params.mfx.CodecProfile = sm_venc_intel_get_h264_profile(p_ivenc->in_params.profile);//yuy2 MFX_PROFILE_AVC_HIGH_422
+        p_ivenc->mfx_params.mfx.CodecLevel = p_ivenc->in_params.level;
     }
-    else if (SM_CODE_TYPE_H265 == p_ivenc->in_param.code_type) {
+    else if (SM_CODE_TYPE_H265 == p_ivenc->in_params.code_type) {
         p_ivenc->mfx_params.mfx.CodecId = MFX_CODEC_HEVC;
         p_ivenc->have_load_h265 = 1;
         MFXVideoUSER_Load(p_ivenc->session, &MFX_PLUGINID_HEVCE_HW, 1);
-        p_ivenc->mfx_params.mfx.CodecProfile = p_ivenc->in_param.pix_fmt == SM_PIX_FMT_P010 ? MFX_PROFILE_HEVC_MAIN10 : MFX_PROFILE_HEVC_MAIN;
-        p_ivenc->mfx_params.mfx.CodecLevel = p_ivenc->in_param.level;
+        p_ivenc->mfx_params.mfx.CodecProfile = p_ivenc->in_params.pix_fmt == SM_PIX_FMT_P010 ? MFX_PROFILE_HEVC_MAIN10 : MFX_PROFILE_HEVC_MAIN;
+        p_ivenc->mfx_params.mfx.CodecLevel = p_ivenc->in_params.level;
     }
     else {
-        SM_LOGE("not support code_type %d\n", p_ivenc->in_param.code_type);
+        SM_LOGE("not support code_type %d\n", p_ivenc->in_params.code_type);
         return SM_STATUS_NOT_SUPOORT;
     }
     return SM_STATUS_SUCCESS;
@@ -193,49 +196,49 @@ sm_status_t sm_venc_intel_set_bitrate(sm_venc_intel_t *p_ivenc)
 {
 
     p_ivenc->mfx_params.mfx.InitialDelayInKB = 0;
-    p_ivenc->out_frame_size = p_ivenc->in_param.width * p_ivenc->in_param.height / 2;
+    p_ivenc->out_frame_size = p_ivenc->in_params.width * p_ivenc->in_params.height / 2;
     if (p_ivenc->out_frame_size / 1024 <= 512) {//fixme
         p_ivenc->out_frame_size = 512 * 1024;
     }
-    if (SM_RATECONTROL_VBR == p_ivenc->in_param.rate_control.mode) {
+    if (SM_RATECONTROL_VBR == p_ivenc->in_params.rate_control.mode) {
         p_ivenc->mfx_params.mfx.RateControlMethod = MFX_RATECONTROL_VBR;
-        p_ivenc->mfx_params.mfx.MaxKbps = sm_venc_intel_bitrate(p_ivenc->in_param.rate_control.max_bitrate_kbps);
-        p_ivenc->mfx_params.mfx.TargetKbps = sm_venc_intel_bitrate(p_ivenc->in_param.rate_control.target_bitrate_kbps);
-        p_ivenc->in_param.rate_control.max_bitrate_kbps = p_ivenc->mfx_params.mfx.MaxKbps;
-        p_ivenc->in_param.rate_control.target_bitrate_kbps = p_ivenc->mfx_params.mfx.TargetKbps;
+        p_ivenc->mfx_params.mfx.MaxKbps = sm_venc_intel_bitrate(p_ivenc->in_params.rate_control.max_bitrate_kbps);
+        p_ivenc->mfx_params.mfx.TargetKbps = sm_venc_intel_bitrate(p_ivenc->in_params.rate_control.target_bitrate_kbps);
+        p_ivenc->in_params.rate_control.max_bitrate_kbps = p_ivenc->mfx_params.mfx.MaxKbps;
+        p_ivenc->in_params.rate_control.target_bitrate_kbps = p_ivenc->mfx_params.mfx.TargetKbps;
     }
-    else if (SM_RATECONTROL_CQP == p_ivenc->in_param.rate_control.mode) {
+    else if (SM_RATECONTROL_CQP == p_ivenc->in_params.rate_control.mode) {
         p_ivenc->mfx_params.mfx.RateControlMethod = MFX_RATECONTROL_CQP;
-        p_ivenc->mfx_params.mfx.QPI = p_ivenc->in_param.rate_control.qpi;
-        p_ivenc->mfx_params.mfx.QPP = p_ivenc->in_param.rate_control.qpp;
-        p_ivenc->mfx_params.mfx.QPB = p_ivenc->in_param.rate_control.qpb;
+        p_ivenc->mfx_params.mfx.QPI = p_ivenc->in_params.rate_control.qpi;
+        p_ivenc->mfx_params.mfx.QPP = p_ivenc->in_params.rate_control.qpp;
+        p_ivenc->mfx_params.mfx.QPB = p_ivenc->in_params.rate_control.qpb;
 
-        p_ivenc->out_frame_size = p_ivenc->in_param.width * p_ivenc->in_param.height * 2;
+        p_ivenc->out_frame_size = p_ivenc->in_params.width * p_ivenc->in_params.height * 2;
         if ((p_ivenc->out_frame_size / 1024) <= 640) {//fixme
             p_ivenc->out_frame_size = 640 * 1024;
         }
     }
     else {//cbr
         p_ivenc->mfx_params.mfx.RateControlMethod = MFX_RATECONTROL_CBR;
-        p_ivenc->mfx_params.mfx.MaxKbps = sm_venc_intel_bitrate(p_ivenc->in_param.rate_control.max_bitrate_kbps);
+        p_ivenc->mfx_params.mfx.MaxKbps = sm_venc_intel_bitrate(p_ivenc->in_params.rate_control.max_bitrate_kbps);
 
-        p_ivenc->in_param.rate_control.mode = SM_RATECONTROL_CBR;
-        p_ivenc->in_param.rate_control.max_bitrate_kbps = p_ivenc->mfx_params.mfx.MaxKbps;
-        p_ivenc->in_param.rate_control.target_bitrate_kbps = p_ivenc->mfx_params.mfx.TargetKbps;
+        p_ivenc->in_params.rate_control.mode = SM_RATECONTROL_CBR;
+        p_ivenc->in_params.rate_control.max_bitrate_kbps = p_ivenc->mfx_params.mfx.MaxKbps;
+        p_ivenc->in_params.rate_control.target_bitrate_kbps = p_ivenc->mfx_params.mfx.TargetKbps;
     }
     p_ivenc->mfx_params.mfx.BufferSizeInKB = p_ivenc->out_frame_size / 1024;
 
-    p_ivenc->mfx_params.mfx.FrameInfo.FrameRateExtN = p_ivenc->in_param.fps.num;
-    p_ivenc->mfx_params.mfx.FrameInfo.FrameRateExtD = p_ivenc->in_param.fps.den;
+    p_ivenc->mfx_params.mfx.FrameInfo.FrameRateExtN = p_ivenc->in_params.fps.num;
+    p_ivenc->mfx_params.mfx.FrameInfo.FrameRateExtD = p_ivenc->in_params.fps.den;
     return SM_STATUS_SUCCESS;
 }
 
 sm_status_t sm_venc_intel_set_gop(sm_venc_intel_t *p_ivenc)
 {
-    p_ivenc->mfx_params.mfx.GopRefDist = p_ivenc->in_param.gop_ref_size;
-    p_ivenc->mfx_params.mfx.GopPicSize = p_ivenc->in_param.gop_size;//60;
+    p_ivenc->mfx_params.mfx.GopRefDist = p_ivenc->in_params.gop_ref_size;
+    p_ivenc->mfx_params.mfx.GopPicSize = p_ivenc->in_params.gop_size;//60;
     p_ivenc->mfx_params.mfx.NumRefFrame = 0;
-    p_ivenc->mfx_params.mfx.IdrInterval = (SM_CODE_TYPE_H265 == p_ivenc->in_param.code_type) ? 1 : 0;
+    p_ivenc->mfx_params.mfx.IdrInterval = (SM_CODE_TYPE_H265 == p_ivenc->in_params.code_type) ? 1 : 0;
 
     p_ivenc->mfx_params.mfx.GopOptFlag = MFX_GOP_CLOSED;
     return SM_STATUS_SUCCESS;
@@ -243,15 +246,15 @@ sm_status_t sm_venc_intel_set_gop(sm_venc_intel_t *p_ivenc)
 sm_status_t sm_venc_intel_set_preset(sm_venc_intel_t *p_ivenc)
 {
 
-    if (SM_VENC_PRESET_BEST_QUALITY == p_ivenc->in_param.ext.preset) {
+    if (SM_VENC_PRESET_BEST_QUALITY == p_ivenc->in_params.ext.preset) {
         p_ivenc->mfx_params.mfx.TargetUsage = MFX_TARGETUSAGE_BEST_QUALITY;
     }
-    else if (SM_VENC_PRESET_BEST_SPEED == p_ivenc->in_param.ext.preset) {
+    else if (SM_VENC_PRESET_BEST_SPEED == p_ivenc->in_params.ext.preset) {
         p_ivenc->mfx_params.mfx.TargetUsage = MFX_TARGETUSAGE_BEST_SPEED;
     }
     else {
         p_ivenc->mfx_params.mfx.TargetUsage = MFX_TARGETUSAGE_BALANCED;
-        p_ivenc->in_param.ext.preset = SM_VENC_PRESET_BALANCED;
+        p_ivenc->in_params.ext.preset = SM_VENC_PRESET_BALANCED;
     }
     return SM_STATUS_SUCCESS;
 }
@@ -261,13 +264,13 @@ sm_status_t sm_venc_intel_set_signal_info(sm_venc_intel_t *p_ivenc)
     p_ivenc->signal_info.Header.BufferId = MFX_EXTBUFF_VIDEO_SIGNAL_INFO;
     p_ivenc->signal_info.Header.BufferSz = sizeof(p_ivenc->signal_info);
     p_ivenc->signal_info.VideoFormat = 0;
-    p_ivenc->signal_info.VideoFullRange = p_ivenc->in_param.ext.signal.yuv_is_full_range;
+    p_ivenc->signal_info.VideoFullRange = p_ivenc->in_params.ext.signal.yuv_is_full_range;
 
-    if (SM_VCODEC_COLOR_PRI_COUNT == p_ivenc->in_param.ext.signal.have_set_color) {
+    if (SM_VCODEC_COLOR_PRI_COUNT == p_ivenc->in_params.ext.signal.have_set_color) {
         p_ivenc->signal_info.ColourDescriptionPresent = 1;
-        p_ivenc->signal_info.ColourPrimaries = p_ivenc->in_param.ext.signal.color_primaries;
-        p_ivenc->signal_info.TransferCharacteristics = p_ivenc->in_param.ext.signal.color_trc;
-        p_ivenc->signal_info.MatrixCoefficients = p_ivenc->in_param.ext.signal.color_space;
+        p_ivenc->signal_info.ColourPrimaries = p_ivenc->in_params.ext.signal.color_primaries;
+        p_ivenc->signal_info.TransferCharacteristics = p_ivenc->in_params.ext.signal.color_trc;
+        p_ivenc->signal_info.MatrixCoefficients = p_ivenc->in_params.ext.signal.color_space;
     }
     else {
         p_ivenc->signal_info.ColourDescriptionPresent = 0;
@@ -281,29 +284,29 @@ sm_status_t sm_venc_intel_set_signal_info(sm_venc_intel_t *p_ivenc)
 
 sm_status_t sm_venc_intel_set_frame_info(sm_venc_intel_t *p_ivenc)
 {
-    if (SM_VCODEC_PICSTRUCT_TFF == p_ivenc->in_param.ext.pic_struct) {
+    if (SM_VCODEC_PICSTRUCT_TFF == p_ivenc->in_params.ext.pic_struct) {
         p_ivenc->mfx_params.mfx.FrameInfo.PicStruct = MFX_PICSTRUCT_FIELD_TFF;
     }
-    else if (SM_VCODEC_PICSTRUCT_BFF == p_ivenc->in_param.ext.pic_struct) {
+    else if (SM_VCODEC_PICSTRUCT_BFF == p_ivenc->in_params.ext.pic_struct) {
         p_ivenc->mfx_params.mfx.FrameInfo.PicStruct = MFX_PICSTRUCT_FIELD_BFF;
     }
     else {
         p_ivenc->mfx_params.mfx.FrameInfo.PicStruct = MFX_PICSTRUCT_PROGRESSIVE;
-        p_ivenc->in_param.ext.pic_struct = SM_VCODEC_PICSTRUCT_PROGRESSIVE;
+        p_ivenc->in_params.ext.pic_struct = SM_VCODEC_PICSTRUCT_PROGRESSIVE;
     }
 
-    p_ivenc->mfx_params.mfx.FrameInfo.Width = SM_ALIGN16(p_ivenc->in_param.width);
-    p_ivenc->mfx_params.mfx.FrameInfo.Height = (MFX_PICSTRUCT_PROGRESSIVE == p_ivenc->mfx_params.mfx.FrameInfo.PicStruct) ? SM_ALIGN16(p_ivenc->in_param.height) : SM_ALIGN32(p_ivenc->in_param.height);
+    p_ivenc->mfx_params.mfx.FrameInfo.Width = SM_ALIGN16(p_ivenc->in_params.width);
+    p_ivenc->mfx_params.mfx.FrameInfo.Height = (MFX_PICSTRUCT_PROGRESSIVE == p_ivenc->mfx_params.mfx.FrameInfo.PicStruct) ? SM_ALIGN16(p_ivenc->in_params.height) : SM_ALIGN32(p_ivenc->in_params.height);
     p_ivenc->mfx_params.mfx.FrameInfo.CropX = 0;
     p_ivenc->mfx_params.mfx.FrameInfo.CropY = 0;
-    p_ivenc->mfx_params.mfx.FrameInfo.CropW = p_ivenc->in_param.width;
-    p_ivenc->mfx_params.mfx.FrameInfo.CropH = p_ivenc->in_param.height;
+    p_ivenc->mfx_params.mfx.FrameInfo.CropW = p_ivenc->in_params.width;
+    p_ivenc->mfx_params.mfx.FrameInfo.CropH = p_ivenc->in_params.height;
 
-    p_ivenc->mfx_params.mfx.NumSlice = p_ivenc->in_param.ext.slice_num;
+    p_ivenc->mfx_params.mfx.NumSlice = p_ivenc->in_params.ext.slice_num;
     return SM_STATUS_SUCCESS;
 }
 sm_status_t sm_venc_intel_set_priv(sm_venc_intel_t *p_ivenc)
-{
+{//fix
     p_ivenc->mfx_params.AsyncDepth = 1;// p_param->intel_async_depth ? p_param->intel_async_depth : 1;//4
     p_ivenc->out_buffer_num = (p_ivenc->mfx_params.AsyncDepth == 1) ? 1 : (p_ivenc->mfx_params.AsyncDepth - 1);//p_ivenc->parms.AsyncDepth - 1;
     p_ivenc->mfx_params.IOPattern = MFX_IOPATTERN_IN_SYSTEM_MEMORY;
@@ -334,7 +337,7 @@ HANDLE sm_venc_create_intel(int32_t index, sm_venc_param_t *p_param, SM_VFRAME_C
         return NULL;
     }
     memset(p_ivenc, 0, sizeof(sm_venc_intel_t));
-    memcpy(&(p_ivenc->in_param), p_param, sizeof(p_ivenc->in_param));
+    memcpy(&(p_ivenc->in_params), p_param, sizeof(p_ivenc->in_params));
     p_ivenc->frame_callback = frame_callback;
     p_ivenc->user_point = user_point;
 
@@ -563,12 +566,12 @@ void sm_venc_intel_fill_surface(sm_venc_intel_t *p_ivenc, sm_picture_info_t *p_p
     }
     p_ivenc->p_surface[index].Data.Pitch = p_ivenc->surface_plane_stride[0];
 
-    switch (p_ivenc->in_param.pix_fmt)
+    switch (p_ivenc->in_params.pix_fmt)
     {
     case SM_PIX_FMT_NV12:
     case SM_PIX_FMT_NV21:
         p_ivenc->p_surface[index].Data.B = p_ivenc->p_surface[index].Data.Y;
-        if (SM_PIX_FMT_NV12 == p_ivenc->in_param.pix_fmt) {
+        if (SM_PIX_FMT_NV12 == p_ivenc->in_params.pix_fmt) {
             p_ivenc->p_surface[index].Data.U = p_ivenc->p_surface[index].Data.Y + p_ivenc->surface_plane_offset[1];
             p_ivenc->p_surface[index].Data.V = p_ivenc->p_surface[index].Data.U + 1;
         }
@@ -580,7 +583,7 @@ void sm_venc_intel_fill_surface(sm_venc_intel_t *p_ivenc, sm_picture_info_t *p_p
     case SM_PIX_FMT_YV12:
     case SM_PIX_FMT_I420:
         p_ivenc->p_surface[index].Data.B = p_ivenc->p_surface[index].Data.Y;
-        if (SM_PIX_FMT_I420 == p_ivenc->in_param.pix_fmt) {
+        if (SM_PIX_FMT_I420 == p_ivenc->in_params.pix_fmt) {
             p_ivenc->p_surface[index].Data.U = p_ivenc->p_surface[index].Data.Y + p_ivenc->surface_plane_offset[1];
             p_ivenc->p_surface[index].Data.V = p_ivenc->p_surface[index].Data.Y + p_ivenc->surface_plane_offset[2];
         }
