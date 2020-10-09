@@ -39,6 +39,10 @@ typedef struct sm_venc_nvidia {
     uint32_t io_buf_num;
     uint32_t input_frame_count;
     uint32_t output_frame_count;
+
+    int32_t nvenc_plane_stride[4];
+    int32_t nvenc_plane_height[4];
+    uint32_t plane_num;
     sm_vcodec_extdata_t extdata;
 }sm_venc_nvidia_t;
 
@@ -134,7 +138,6 @@ sm_status_t sm_venc_nvidia_get_gpu_name(int32_t device_id, char *p_gpu_name, int
 }
 sm_status_t sm_venc_nvidia_init(int32_t device_id)
 {
-    CUresult ret;
     CUdevice device;
     CUcontext context;
     int32_t  device_count = 0;
@@ -189,7 +192,7 @@ sm_status_t sm_venc_nvidia_create_session(sm_venc_nvidia_t *p_nvenc, int32_t ind
     open_encode_session_ex_params.apiVersion = NVENCAPI_VERSION;
     ret = g_p_nvenc_api->nvEncOpenEncodeSessionEx(&open_encode_session_ex_params, &(p_nvenc->session));
     if (NV_ENC_SUCCESS != ret) {
-        printf("nvEncOpenEncodeSessionEx fail, ret\n",ret);
+        SM_LOGE("nvEncOpenEncodeSessionEx fail, ret %d\n",ret);
         return SM_STATUS_FAIL;
     }
     return SM_STATUS_SUCCESS;
@@ -450,31 +453,61 @@ int32_t sm_venc_nvidia_create_io_buf(sm_venc_nvidia_t *p_nvenc)
         register_resource.bufferFormat = cache_input_buffer.bufferFmt = NV_ENC_BUFFER_FORMAT_NV12;
         register_resource.pitch = register_resource.width;
         frame_size = register_resource.width * register_resource.height * 3 / 2;
+        p_nvenc->plane_num = 2;
+        p_nvenc->nvenc_plane_height[0] = p_nvenc->in_params.height;
+        p_nvenc->nvenc_plane_height[1] = p_nvenc->in_params.height/2;
+        p_nvenc->nvenc_plane_stride[0] = p_nvenc->in_params.width;
+        p_nvenc->nvenc_plane_stride[1] = p_nvenc->in_params.width;
     }
     else if (SM_PIX_FMT_YV12 == p_nvenc->in_params.pix_fmt) {
         register_resource.bufferFormat = cache_input_buffer.bufferFmt = NV_ENC_BUFFER_FORMAT_YV12;
         register_resource.pitch = register_resource.width;
         frame_size = register_resource.width * register_resource.height * 3 / 2;
+        p_nvenc->plane_num = 3;
+        p_nvenc->nvenc_plane_height[0] = p_nvenc->in_params.height;
+        p_nvenc->nvenc_plane_height[1] = p_nvenc->in_params.height / 2;
+        p_nvenc->nvenc_plane_height[2] = p_nvenc->in_params.height / 2;
+        p_nvenc->nvenc_plane_stride[0] = p_nvenc->in_params.width;
+        p_nvenc->nvenc_plane_stride[1] = p_nvenc->in_params.width / 2;
+        p_nvenc->nvenc_plane_stride[2] = p_nvenc->in_params.width / 2;
     }
     else if (SM_PIX_FMT_I420 == p_nvenc->in_params.pix_fmt) {
         register_resource.bufferFormat = cache_input_buffer.bufferFmt = NV_ENC_BUFFER_FORMAT_IYUV;
         register_resource.pitch = register_resource.width;
         frame_size = register_resource.width * register_resource.height * 3 / 2;
+        p_nvenc->plane_num = 3;
+        p_nvenc->nvenc_plane_height[0] = p_nvenc->in_params.height;
+        p_nvenc->nvenc_plane_height[1] = p_nvenc->in_params.height / 2;
+        p_nvenc->nvenc_plane_height[2] = p_nvenc->in_params.height / 2;
+        p_nvenc->nvenc_plane_stride[0] = p_nvenc->in_params.width;
+        p_nvenc->nvenc_plane_stride[1] = p_nvenc->in_params.width / 2;
+        p_nvenc->nvenc_plane_stride[2] = p_nvenc->in_params.width / 2;
     }
     else if (SM_PIX_FMT_RGBA == p_nvenc->in_params.pix_fmt) {//ABGR
         register_resource.bufferFormat = cache_input_buffer.bufferFmt = NV_ENC_BUFFER_FORMAT_ABGR;
         register_resource.pitch = register_resource.width * 4;
         frame_size = register_resource.width * register_resource.height * 4;
+        p_nvenc->plane_num = 1;
+        p_nvenc->nvenc_plane_height[0] = p_nvenc->in_params.height;
+        p_nvenc->nvenc_plane_stride[0] = p_nvenc->in_params.width*4;
     }
     else if (SM_PIX_FMT_BGRA == p_nvenc->in_params.pix_fmt) {//ARGB
         register_resource.bufferFormat = cache_input_buffer.bufferFmt = NV_ENC_BUFFER_FORMAT_ARGB;
         register_resource.pitch = register_resource.width * 4;
         frame_size = register_resource.width * register_resource.height * 4;
+        p_nvenc->plane_num = 1;
+        p_nvenc->nvenc_plane_height[0] = p_nvenc->in_params.height;
+        p_nvenc->nvenc_plane_stride[0] = p_nvenc->in_params.width * 4;
     }
     else if (SM_PIX_FMT_P010 == p_nvenc->in_params.pix_fmt) {
         register_resource.bufferFormat = cache_input_buffer.bufferFmt = NV_ENC_BUFFER_FORMAT_YUV420_10BIT;
         register_resource.pitch = register_resource.width * 2;
         frame_size = register_resource.width * register_resource.height * 3;
+        p_nvenc->plane_num = 2;
+        p_nvenc->nvenc_plane_height[0] = p_nvenc->in_params.height;
+        p_nvenc->nvenc_plane_height[1] = p_nvenc->in_params.height / 2;
+        p_nvenc->nvenc_plane_stride[0] = p_nvenc->in_params.width*2;
+        p_nvenc->nvenc_plane_stride[1] = p_nvenc->in_params.width*2;
     }
     else {
         SM_LOGE("not support pix_fmt %d\n", p_nvenc->in_params.pix_fmt);
@@ -584,12 +617,10 @@ int32_t sm_venc_nvidia_get_io_buf_index(sm_venc_nvidia_t *p_nvenc)
     return index;
 }
 
-sm_status_t nvidia_fill_frame(sm_venc_nvidia_t *p_nvenc, unsigned char *p_frame, int index)
+sm_status_t nvidia_fill_frame(sm_venc_nvidia_t *p_nvenc, sm_picture_info_t *p_picture, int index)
 {
-    int32_t i;
-    int32_t copy_lines;
     NV_ENC_LOCK_INPUT_BUFFER lock_input_buffer;
-    uint8_t *p_dst_ptr;
+    uint8_t *p_dst;
     memset(&lock_input_buffer, 0, sizeof(lock_input_buffer));
     NVENC_SET_VER(lock_input_buffer, NV_ENC_LOCK_INPUT_BUFFER);
 
@@ -598,49 +629,26 @@ sm_status_t nvidia_fill_frame(sm_venc_nvidia_t *p_nvenc, unsigned char *p_frame,
         SM_LOGE("nvEncLockInputBuffer fail");
         return SM_STATUS_FAIL;
     }
-    p_dst_ptr = (uint8_t *)lock_input_buffer.bufferDataPtr;
-    switch (p_nvenc->in_params.pix_fmt)
-    {
-    case SM_PIX_FMT_NV12:
-        copy_lines = p_nvenc->in_params.height * 3 / 2;
-        for (i = 0; i < copy_lines; i++) {
-            memcpy(p_dst_ptr, p_frame, p_nvenc->in_params.width);
-            p_frame += p_nvenc->in_params.width;
-            p_dst_ptr += lock_input_buffer.pitch;
+    p_dst = (uint8_t *)lock_input_buffer.bufferDataPtr;
+    for (int i = 0; i < p_nvenc->plane_num; i++) {
+        uint8_t *p_src = p_picture->p_plane[i];
+        int32_t copy_stride = 0;
+        if (p_nvenc->nvenc_plane_stride[i] == p_picture->plane_stride[i]) {
+            memcpy(p_dst, p_src, p_picture->plane_stride[i] * p_nvenc->nvenc_plane_height[i]);
+            p_dst += p_picture->plane_stride[i] * p_nvenc->nvenc_plane_height[i];
+            continue;
         }
-        break;
-    case SM_PIX_FMT_YV12:
-    case SM_PIX_FMT_I420:
-        for (i = 0; i < p_nvenc->in_params.height; i++) {
-            memcpy(p_dst_ptr, p_frame, p_nvenc->in_params.width);
-            p_frame += p_nvenc->in_params.width;
-            p_dst_ptr += lock_input_buffer.pitch;
+        else if (p_nvenc->nvenc_plane_stride[i] > p_picture->plane_stride[i]) {
+            copy_stride = p_picture->plane_stride[i];
         }
-        copy_lines = p_nvenc->in_params.height * 2;
-        for (i = 0; i < p_nvenc->in_params.height; i++) {
-            memcpy(p_dst_ptr, p_frame, p_nvenc->in_params.width / 2);
-            p_frame += p_nvenc->in_params.width / 2;
-            p_dst_ptr += lock_input_buffer.pitch / 2;
+        else {
+            copy_stride = p_nvenc->nvenc_plane_stride[i];
         }
-        break;
-    case SM_PIX_FMT_ABGR:
-    case SM_PIX_FMT_ARGB:
-    case SM_PIX_FMT_BGRA:
-    case SM_PIX_FMT_RGBA:
-        for (i = 0; i < p_nvenc->in_params.height; i++) {
-            memcpy(p_dst_ptr, p_frame, p_nvenc->in_params.width * 4);
-            p_frame += p_nvenc->in_params.width * 4;
-            p_dst_ptr += lock_input_buffer.pitch;
+        for (int32_t j = 0; j < p_nvenc->nvenc_plane_height[i]; j++) {
+            memcpy(p_dst, p_src, copy_stride);
+            p_dst += p_nvenc->nvenc_plane_stride[i];
+            p_src += p_picture->plane_stride[i];
         }
-        break;
-    case SM_PIX_FMT_P010:
-        copy_lines = p_nvenc->in_params.height * 3 / 2;
-        for (i = 0; i < copy_lines; i++) {
-            memcpy(p_dst_ptr, p_frame, p_nvenc->in_params.width * 2);
-            p_frame += p_nvenc->in_params.width * 2;
-            p_dst_ptr += lock_input_buffer.pitch;
-        }
-        break;
     }
     if (NV_ENC_SUCCESS != g_p_nvenc_api->nvEncUnlockInputBuffer(p_nvenc->session, p_nvenc->p_io_buf[index].input_ptr)) {
         SM_LOGE("nvEncUnlockInputBuffer fail");
@@ -648,23 +656,23 @@ sm_status_t nvidia_fill_frame(sm_venc_nvidia_t *p_nvenc, unsigned char *p_frame,
     }
     return SM_STATUS_SUCCESS;
 }
-int32_t nvidia_enc_frame(sm_venc_nvidia_t *p_nvenc, int32_t index, int64_t pts)
+int32_t nvidia_enc_frame(sm_venc_nvidia_t *p_nvenc, int32_t index, int64_t pts, int32_t force_idr)
 {
     NV_ENC_PIC_PARAMS pic_param;
     NVENCSTATUS ret;
     memset(&pic_param, 0, sizeof(pic_param));
-    SET_VER(pic_param, NV_ENC_PIC_PARAMS);
+    NVENC_SET_VER(pic_param, NV_ENC_PIC_PARAMS);
 
     //pic_param.frameIdx = p_nvenc->in_frame_count;
-    pic_param.inputBuffer = p_nvenc->p_io[index].input_surface;
-    pic_param.bufferFmt = p_nvenc->nv_foucc;
+    pic_param.inputBuffer = p_nvenc->p_io_buf[index].input_ptr;
+    pic_param.bufferFmt = p_nvenc->nvenc_pix_format;
     pic_param.inputWidth = p_nvenc->in_params.width;
     pic_param.inputHeight = p_nvenc->in_params.height;
-    pic_param.outputBitstream = p_nvenc->p_io[index].output_stream;
-    pic_param.completionEvent = p_nvenc->p_io[index].output_event;
+    pic_param.outputBitstream = p_nvenc->p_io_buf[index].output_ptr;
+    pic_param.completionEvent = p_nvenc->p_io_buf[index].output_completion_event;
     pic_param.inputTimeStamp = pts;//p_nvenc->in_frame_count * 1000000 / 30;// +1000000;
     if (NV_ENC_PARAMS_FRAME_FIELD_MODE_FIELD == p_nvenc->config.frameFieldMode) {//iiiiiiiiiii
-        if (MW_VENC_PICSTRUCT_FIELD_TFF == p_nvenc->in_params.pic_struct) {
+        if (SM_VCODEC_PICSTRUCT_TFF == p_nvenc->in_params.ext.pic_struct) {
             pic_param.pictureStruct = NV_ENC_PIC_STRUCT_FIELD_TOP_BOTTOM;
         }
         else {
@@ -677,27 +685,46 @@ int32_t nvidia_enc_frame(sm_venc_nvidia_t *p_nvenc, int32_t index, int64_t pts)
 
     pic_param.qpDeltaMap = NULL;
     pic_param.qpDeltaMapSize = 0;
-    if (p_nvenc->need_idr) {
+    if (force_idr) {
         pic_param.encodePicFlags = NV_ENC_PIC_FLAG_FORCEIDR;
     }
 
     ret = g_p_nvenc_api->nvEncEncodePicture(p_nvenc->session, &pic_param);
     if (ret == NV_ENC_ERR_NEED_MORE_INPUT) {
-        //printf("need input frame\n");
         return 1;
     }
     else if (ret == NV_ENC_SUCCESS) {
-        if (p_nvenc->need_idr) {
-            p_nvenc->need_idr = 0;
-        }
         return 0;
     }
-    printf("enc fail ret[%d]", ret);
+    SM_LOGE("nvEncEncodePicture fail ret[%d]", ret);
     return -1;
 }
 
 sm_status_t sm_venc_encode_nvidia(HANDLE handle, sm_picture_info_t *p_picture, int32_t force_idr)
 {
+    int32_t io_buf_index = -1;
+    sm_venc_nvidia_t *p_nvenc = (sm_venc_nvidia_t *)handle;
+    if ((NULL == p_nvenc) || (NULL == p_nvenc->session)) {
+        return SM_STATUS_INVALID_PARAM;
+    }
+
+    if (NULL == p_nvenc->p_io_buf) {
+        if (sm_venc_nvidia_create_io_buf(p_nvenc) < 0) {
+            return SM_STATUS_FAIL;
+        }
+    }
+    io_buf_index = sm_venc_nvidia_get_io_buf_index(p_nvenc);
+    if (io_buf_index < 0) {
+        printf("have no frame\n");
+        return SM_STATUS_FAIL;
+    }
+    if (nvidia_fill_frame(p_nvenc, p_picture, io_buf_index) < 0) {
+        return SM_STATUS_FAIL;
+    }
+    if (nvidia_enc_frame(p_nvenc, io_buf_index, p_picture->pts, force_idr) < 0) {
+        return SM_STATUS_FAIL;
+    }
+    p_nvenc->p_io_buf[io_buf_index].is_encoding = 1;
     return SM_STATUS_SUCCESS;
 }
 

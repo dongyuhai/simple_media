@@ -70,7 +70,6 @@ typedef struct sm_picture_info
 {
     uint8_t *p_plane[4];
     int32_t plane_stride[4];
-    uint32_t len;
     uint64_t pts;
 }sm_picture_info_t;
 
