@@ -617,7 +617,7 @@ int32_t sm_venc_nvidia_get_io_buf_index(sm_venc_nvidia_t *p_nvenc)
     return index;
 }
 
-sm_status_t nvidia_fill_frame(sm_venc_nvidia_t *p_nvenc, sm_picture_info_t *p_picture, int index)
+sm_status_t sm_venc_nvidia_fill_frame(sm_venc_nvidia_t *p_nvenc, sm_picture_info_t *p_picture, int index)
 {
     NV_ENC_LOCK_INPUT_BUFFER lock_input_buffer;
     uint8_t *p_dst;
@@ -656,7 +656,7 @@ sm_status_t nvidia_fill_frame(sm_venc_nvidia_t *p_nvenc, sm_picture_info_t *p_pi
     }
     return SM_STATUS_SUCCESS;
 }
-int32_t nvidia_enc_frame(sm_venc_nvidia_t *p_nvenc, int32_t index, int64_t pts, int32_t force_idr)
+int32_t sm_venc_nvidia_enc_frame(sm_venc_nvidia_t *p_nvenc, int32_t index, int64_t pts, int32_t force_idr)
 {
     NV_ENC_PIC_PARAMS pic_param;
     NVENCSTATUS ret;
@@ -718,18 +718,62 @@ sm_status_t sm_venc_encode_nvidia(HANDLE handle, sm_picture_info_t *p_picture, i
         printf("have no frame\n");
         return SM_STATUS_FAIL;
     }
-    if (nvidia_fill_frame(p_nvenc, p_picture, io_buf_index) < 0) {
+    if (sm_venc_nvidia_fill_frame(p_nvenc, p_picture, io_buf_index) < 0) {
         return SM_STATUS_FAIL;
     }
-    if (nvidia_enc_frame(p_nvenc, io_buf_index, p_picture->pts, force_idr) < 0) {
+    if (sm_venc_nvidia_enc_frame(p_nvenc, io_buf_index, p_picture->pts, force_idr) < 0) {
         return SM_STATUS_FAIL;
     }
     p_nvenc->p_io_buf[io_buf_index].is_encoding = 1;
     return SM_STATUS_SUCCESS;
 }
 
+void sm_venc_nvidia_flush_encoder(sm_venc_nvidia_t *p_nvenc)
+{
+    int32_t i;
+    NV_ENC_PIC_PARAMS pic_params;
+    NVENC_SET_VER(pic_params, NV_ENC_PIC_PARAMS);
+    pic_params.encodePicFlags = NV_ENC_PIC_FLAG_EOS;
+    g_p_nvenc_api->nvEncEncodePicture(p_nvenc->session, &pic_params);
+    for (i = 0; i < p_nvenc->io_buf_num; i++) {
+        sm_venc_nvidia_get_io_buf_index(p_nvenc);
+        p_nvenc->input_frame_count++;
+    }
+}
 sm_status_t sm_venc_destory_nvidia(HANDLE handle)
 {
+    int32_t i;
+
+    sm_venc_nvidia_t *p_nvenc = (sm_venc_nvidia_t *)handle;
+    if (NULL == p_nvenc) {
+        return SM_STATUS_INVALID_PARAM;
+    }
+    if (p_nvenc->p_io_buf) {
+        sm_venc_nvidia_flush_encoder(p_nvenc);
+        for (i = 0; i < p_nvenc->io_buf_num; i++) {
+            if (p_nvenc->p_io_buf[i].input_ptr) {
+                g_p_nvenc_api->nvEncDestroyInputBuffer(p_nvenc->session, p_nvenc->p_io_buf[i].input_ptr);
+            }
+            if (p_nvenc->p_io_buf[i].output_ptr) {
+                g_p_nvenc_api->nvEncDestroyBitstreamBuffer(p_nvenc->session, p_nvenc->p_io_buf[i].output_ptr);
+            }
+            if (p_nvenc->p_io_buf[i].output_completion_event) {
+                NV_ENC_EVENT_PARAMS event_params;
+                memset(&event_params, 0, sizeof(event_params));
+                NVENC_SET_VER(event_params, NV_ENC_EVENT_PARAMS);
+                event_params.completionEvent = p_nvenc->p_io_buf[i].output_completion_event;
+                g_p_nvenc_api->nvEncUnregisterAsyncEvent(p_nvenc->session, &event_params);
+            }
+        }
+        free(p_nvenc->p_io_buf);
+    }
+    if (p_nvenc->extdata.p_extdata) {
+        free(p_nvenc->extdata.p_extdata);
+    }
+    if (p_nvenc->session) {
+        g_p_nvenc_api->nvEncDestroyEncoder(p_nvenc->session);
+    }
+    free(p_nvenc);
     return SM_STATUS_SUCCESS;
 }
 
